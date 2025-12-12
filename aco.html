@@ -1,0 +1,2320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PTSE Bus Reroute Project (Responsive UI)</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --bg-card: #12121a;
+            --accent-blue: #3b82f6;
+            --accent-red: #ef4444;
+            --accent-green: #22c55e;
+            --accent-yellow: #eab308;
+            --accent-purple: #a855f7;
+            --accent-cyan: #06b6d4;
+            --accent-orange: #f97316;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --border: #1e293b;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 0.75rem;
+            background-image: 
+                radial-gradient(ellipse at 20% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 50%);
+        }
+        
+        .container { max-width: 1600px; margin: 0 auto; position: relative; }
+        
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 0.2rem;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 10px rgba(59, 130, 246, 0.5));
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+            font-size: 0.85rem;
+        }
+        
+        .full-width-section { width: 100%; margin-bottom: 0.75rem; }
+        .grid-dashboard { display: grid; grid-template-columns: 1.2fr 1fr; gap: 0.75rem; margin-bottom: 0.75rem; }
+        
+        .card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 0.75rem;
+            position: relative;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+            box-shadow: 0 0 10px var(--accent-blue);
+        }
+        
+        .card-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.4rem;
+            flex-shrink: 0;
+        }
+        
+        .map-container {
+            width: 100%;
+            height: 600px;
+            background: linear-gradient(135deg, #0d1117 0%, #161b22 100%);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: inset 0 0 40px rgba(0,0,0,0.9);
+            border: 1px solid #1e293b;
+        }
+        
+        .map-svg { width: 100%; height: 100%; }
+        
+        .map-edge-base { stroke: #1f2937; stroke-width: 14; stroke-linecap: round; opacity: 0.6; }
+        .map-edge-inner { stroke: #111827; stroke-width: 6; stroke-linecap: round; opacity: 0.8; }
+        
+        .pheromone-line { stroke: var(--accent-yellow); stroke-linecap: round; fill: none; transition: all 0.5s; mix-blend-mode: screen; }
+        .desire-line { stroke: rgba(255, 255, 255, 0.15); stroke-width: 1; fill: none; pointer-events: none; stroke-dasharray: 2, 4; }
+        
+        .active-route-line { fill: none; stroke-linecap: round; stroke-linejoin: round; transition: all 0.3s ease; opacity: 1; }
+        .active-route-line.dimmed { opacity: 0.1; }
+        .active-route-line.highlighted { stroke-width: 8 !important; filter: drop-shadow(0 0 15px currentColor); z-index: 100; opacity: 1 !important; }
+
+        .glow-c0 { filter: drop-shadow(0 0 8px rgba(59, 130, 246, 1)); }
+        .glow-c1 { filter: drop-shadow(0 0 8px rgba(239, 68, 68, 1)); }
+        .glow-c2 { filter: drop-shadow(0 0 8px rgba(34, 197, 94, 1)); }
+        .glow-c3 { filter: drop-shadow(0 0 8px rgba(249, 115, 22, 1)); }
+        .glow-c4 { filter: drop-shadow(0 0 8px rgba(168, 85, 247, 1)); }
+        .glow-c5 { filter: drop-shadow(0 0 8px rgba(6, 182, 212, 1)); }
+        .glow-c6 { filter: drop-shadow(0 0 8px rgba(236, 72, 153, 1)); }
+        .glow-c7 { filter: drop-shadow(0 0 8px rgba(234, 179, 8, 1)); }
+        .glow-c8 { filter: drop-shadow(0 0 8px rgba(20, 184, 166, 1)); }
+        .glow-c9 { filter: drop-shadow(0 0 8px rgba(99, 102, 241, 1)); }
+
+        @keyframes dashFlow { to { stroke-dashoffset: -24; } }
+        .route-flowing { stroke-dasharray: 8, 4; animation: dashFlow 0.8s linear infinite; }
+
+        .map-node-bg { fill: var(--bg-dark); stroke: none; }
+        .map-node { fill: var(--bg-dark); stroke: var(--accent-cyan); stroke-width: 3; cursor: pointer; transition: all 0.3s ease; z-index: 10; }
+        .map-node:hover { stroke-width: 5; fill: #1e293b; filter: drop-shadow(0 0 12px rgba(6, 182, 212, 1)); r: 16; }
+        .node-label { fill: var(--text-primary); font-family: 'Sarabun', sans-serif; font-size: 13px; font-weight: 700; text-anchor: middle; pointer-events: none; text-shadow: 0 2px 4px #000, 0 0 6px #000; }
+        .edge-time { fill: #94a3b8; font-family: 'JetBrains Mono', monospace; font-size: 12px; text-anchor: middle; pointer-events: none; font-weight: bold; }
+
+        .tooltip { position: absolute; background: rgba(18, 18, 26, 0.95); border: 1px solid var(--accent-purple); border-radius: 6px; padding: 0.5rem 0.8rem; font-size: 0.75rem; pointer-events: none; z-index: 100; display: none; box-shadow: 0 4px 12px rgba(0,0,0,0.8); backdrop-filter: blur(4px); }
+        .tooltip .name-th { font-weight: 600; color: var(--accent-cyan); font-size: 0.9rem; margin-bottom: 2px;}
+        .tooltip .name-en { font-size: 0.7rem; color: var(--text-secondary); }
+        
+        .config-container { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 0.8rem; padding: 0.5rem; background: rgba(0, 0, 0, 0.3); border-radius: 8px; margin-bottom: 0.8rem; border: 1px solid rgba(255,255,255,0.05); }
+        .config-group { display: flex; flex-direction: column; gap: 0.6rem; }
+        .config-group-title { font-size: 0.7rem; color: var(--accent-blue); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 0.2rem; padding-bottom: 0.2rem; border-bottom: 1px solid rgba(59, 130, 246, 0.3); }
+        .config-item { display: flex; flex-direction: column; gap: 0.2rem; }
+        .config-label { font-size: 0.65rem; color: var(--text-secondary); display: flex; justify-content: space-between; align-items: center; }
+        .config-value { font-family: 'JetBrains Mono', monospace; color: var(--accent-cyan); font-weight: 600; font-size: 0.7rem; background: rgba(6, 182, 212, 0.1); padding: 0 4px; border-radius: 3px; }
+        .config-input { background: var(--bg-dark); border: 1px solid var(--border); color: var(--accent-cyan); font-family: 'JetBrains Mono'; font-size: 0.7rem; padding: 2px 5px; border-radius: 3px; width: 60px; text-align: center; }
+        .config-slider { width: 100%; height: 5px; -webkit-appearance: none; background: var(--border); border-radius: 3px; outline: none; }
+        .config-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); cursor: pointer; box-shadow: 0 0 5px rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.2); }
+        
+        .control-panel { display: flex; gap: 0.5rem; justify-content: center; flex-wrap: wrap; margin-bottom: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255,255,255,0.05); }
+        .btn { font-family: 'Sarabun', sans-serif; font-size: 0.8rem; font-weight: 600; padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 0.3rem; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); color: white; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3); }
+        .btn-secondary { background: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); }
+        .btn-success { background: linear-gradient(135deg, var(--accent-green), var(--accent-cyan)); color: white; box-shadow: 0 4px 10px rgba(34, 197, 94, 0.3); }
+        .btn-instant { background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue)); color: white; box-shadow: 0 4px 10px rgba(6, 182, 212, 0.3); }
+        .btn-warning { background: linear-gradient(135deg, var(--accent-orange), var(--accent-red)); color: white; box-shadow: 0 4px 10px rgba(249, 115, 22, 0.3); }
+        .btn-sm { padding: 0.2rem 0.5rem; font-size: 0.65rem; border-radius: 4px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-secondary); cursor: pointer; }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+        .btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.1); }
+        
+        .allocation-selector { display: flex; gap: 0.3rem; justify-content: center; margin-bottom: 0.8rem; }
+        .alloc-btn { padding: 0.3rem 0.8rem; border-radius: 5px; border: 1px solid var(--border); background: var(--bg-dark); color: var(--text-secondary); font-size: 0.7rem; cursor: pointer; transition: all 0.2s; }
+        .alloc-btn.active { background: var(--accent-purple); border-color: var(--accent-purple); color: white; box-shadow: 0 0 10px rgba(168, 85, 247, 0.3); }
+        
+        .progress-container { width: 100%; max-width: 300px; height: 4px; background: var(--border); border-radius: 2px; margin: 0 auto; }
+        .progress-bar { height: 100%; background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple)); border-radius: 2px; width: 0%; transition: width 0.3s; box-shadow: 0 0 10px rgba(168, 85, 247, 0.5); }
+        .status-display { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--accent-cyan); text-align: center; margin-top: 0.4rem; }
+        
+        .iteration-display { display: flex; justify-content: center; gap: 0.3rem; margin-bottom: 0.5rem; }
+        .iteration-dot { width: 22px; height: 22px; border-radius: 50%; background: var(--border); display: flex; align-items: center; justify-content: center; font-size: 0.65rem; font-family: 'JetBrains Mono', monospace; color: var(--text-secondary); }
+        .iteration-dot.active { background: var(--accent-blue); color: white; box-shadow: 0 0 8px var(--accent-blue); }
+        .iteration-dot.complete { background: var(--accent-green); color: white; }
+        
+        .info-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.5rem; flex-shrink: 0; }
+        .info-box { background: rgba(59, 130, 246, 0.1); border-radius: 6px; padding: 0.4rem; text-align: center; border: 1px solid rgba(59, 130, 246, 0.2); display: flex; flex-direction: column; gap: 2px; position: relative; cursor: help; }
+        .info-box:hover .info-tooltip { display: block; }
+        .info-value { font-size: 0.95rem; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin: 2px 0; }
+        .info-value.user { color: var(--accent-yellow); text-shadow: 0 0 5px rgba(234, 179, 8, 0.3); }
+        .info-value.operator { color: var(--accent-purple); text-shadow: 0 0 5px rgba(168, 85, 247, 0.3); }
+        .info-value.total { color: var(--accent-green); text-shadow: 0 0 5px rgba(34, 197, 94, 0.3); }
+        .info-label { font-size: 0.6rem; color: var(--text-secondary); margin-bottom: 4px; font-weight: bold; text-transform: uppercase; }
+        .info-sub { font-size: 0.65rem; color: #94a3b8; display: flex; justify-content: space-between; padding: 0 4px; font-family: 'JetBrains Mono', monospace; }
+        .info-sub span:last-child { color: var(--text-primary); font-weight: 600; }
+        .info-tooltip { display: none; position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.95); border: 1px solid var(--border); padding: 0.5rem; border-radius: 4px; font-size: 0.65rem; width: 180px; z-index: 200; text-align: left; pointer-events: none; box-shadow: 0 4px 12px rgba(0,0,0,0.5); }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 2px; }
+        
+        .route-item { display: flex; align-items: center; gap: 0.4rem; padding: 0.5rem; background: rgba(0, 0, 0, 0.3); border-radius: 6px; margin-bottom: 0.3rem; flex-shrink: 0; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
+        .route-item:hover { border-color: rgba(255,255,255,0.1); background: rgba(0, 0, 0, 0.5); }
+        .route-item.hidden-route { opacity: 0.4; filter: grayscale(0.5); }
+        .route-item.highlighted { background: rgba(255,255,255,0.15); border-color: var(--accent-blue); transform: scale(1.02); }
+        
+        .route-color { width: 10px; height: 10px; border-radius: 2px; flex-shrink: 0; }
+        
+        .route-label { font-size: 0.7rem; color: var(--text-secondary); min-width: 40px; font-weight: 600; white-space: nowrap;}
+        .route-path { font-size: 0.75rem; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        
+        .od-search-container { display: flex; align-items: center; gap: 0.5rem; }
+        .od-search-input { background: var(--bg-dark); border: 1px solid var(--border); color: var(--text-primary); padding: 0.3rem 0.5rem; border-radius: 4px; font-size: 0.7rem; width: 120px; outline: none; }
+        .od-search-input:focus { border-color: var(--accent-blue); box-shadow: 0 0 5px rgba(59, 130, 246, 0.5); }
+
+        .od-table { width: 100%; font-size: 0.75rem; border-collapse: separate; border-spacing: 0; }
+        .od-table th, .od-table td { padding: 0.6rem 0.4rem; text-align: center; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .od-table th { color: var(--accent-blue); font-size: 0.7rem; background: var(--bg-card); position: sticky; top: 0; z-index: 10; }
+        .od-table tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.02); }
+        .od-table .od-pair { color: var(--accent-purple); font-weight: 600; text-align: left; max-width: 130px; font-size: 0.75rem; }
+
+        .time-cell { text-align: left !important; font-size: 0.7rem; color: #ccc; }
+        .time-item { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; white-space: nowrap; }
+        .mini-badge { font-size: 0.6rem; padding: 1px 5px; border-radius: 3px; color: white; font-weight: 700; background: #ccc; font-family: 'JetBrains Mono', monospace; text-shadow: 0 1px 1px rgba(0,0,0,0.5); }
+        
+        .comparison-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 0.5rem; overflow-y: auto; flex-grow: 1; padding-right: 0.2rem; }
+        .mini-network { background: rgba(0, 0, 0, 0.5); border-radius: 6px; padding: 0.4rem; cursor: pointer; border: 1px solid var(--border); text-align: center; transition: all 0.2s; display: flex; flex-direction: column; height: 110px; }
+        .mini-network:hover { border-color: var(--accent-blue); transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.5); }
+        .mini-network.selected { border-color: var(--accent-green); background: rgba(34, 197, 94, 0.1); box-shadow: 0 0 10px rgba(34, 197, 94, 0.2); }
+        .mini-label { font-size: 0.6rem; color: var(--text-secondary); margin-bottom: 2px; }
+        .mini-cost { font-size: 0.7rem; font-weight: 600; color: var(--accent-green); font-family: 'JetBrains Mono', monospace; }
+        
+        .mini-map-wrapper { flex-grow: 1; width: 100%; margin-bottom: 4px; background: rgba(255,255,255,0.02); border-radius: 4px; overflow: hidden; position: relative; }
+        .mini-map-svg { width: 100%; height: 100%; display: block; }
+        .mini-info { display: flex; justify-content: space-between; align-items: center; width: 100%; margin-top: auto; }
+
+        .iter-select { background: var(--bg-dark); color: var(--text-primary); border: 1px solid var(--border); border-radius: 4px; padding: 0.2rem 0.5rem; font-size: 0.7rem; outline: none; cursor: pointer; }
+
+        .map-legend { display: flex; gap: 0.75rem; justify-content: center; margin-top: 0.4rem; font-size: 0.7rem; flex-wrap: wrap; }
+        .legend-item { display: flex; align-items: center; gap: 0.2rem; }
+        .legend-line { width: 16px; height: 3px; border-radius: 2px; }
+        .legend-line.gray { background: #4b5563; }
+        .visibility-icon { font-size: 0.7rem; margin-left: auto; color: var(--text-secondary); }
+
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .running .status-display { animation: pulse 1s infinite; }
+        
+        .chart-container { width: 100%; height: 300px; margin-top: 0.5rem; background: rgba(0,0,0,0.2); border-radius: 8px; position: relative; border: 1px solid var(--border); }
+        .chart-svg { width: 100%; height: 100%; }
+        .chart-axis { stroke: var(--text-secondary); stroke-width: 1; }
+        .chart-grid { stroke: var(--border); stroke-width: 1; stroke-dasharray: 4, 4; opacity: 0.3; }
+        .chart-line { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+        .chart-point { fill: var(--bg-card); stroke-width: 2; cursor: pointer; transition: all 0.2s; }
+        .chart-point:hover { stroke-width: 4; r: 6; }
+        .chart-label { font-size: 10px; fill: var(--text-secondary); text-anchor: middle; }
+        .chart-tooltip { position: absolute; background: rgba(0,0,0,0.9); padding: 0.5rem; border-radius: 4px; border: 1px solid var(--accent-blue); pointer-events: none; display: none; font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; z-index: 100; }
+
+        .speed-control { display: flex; align-items: center; justify-content: center; gap: 1rem; margin-top: 0.5rem; padding: 0.5rem; background: rgba(255, 255, 255, 0.05); border-radius: 6px; border: 1px solid var(--border); }
+        .speed-label { font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600; white-space: nowrap; }
+        
+        .view-controls { display:flex; gap: 1rem; justify-content: center; margin-top: 0.5rem; font-size: 0.75rem; color: var(--text-secondary); }
+        .view-check { display: flex; align-items: center; gap: 0.3rem; cursor: pointer; }
+        .view-check input { cursor: pointer; }
+        
+        .network-select { 
+            background: var(--bg-card); 
+            color: var(--text-primary); 
+            border: 1px solid var(--border); 
+            border-radius: 6px; 
+            font-size: 0.8rem; 
+            padding: 0.5rem; 
+            outline: none; 
+            cursor: pointer; 
+            font-family: 'Sarabun'; 
+            font-weight: 600;
+            min-width: 200px;
+        }
+        .network-select:hover { border-color: var(--accent-blue); }
+
+        @media (max-width: 900px) {
+            .grid-dashboard { grid-template-columns: 1fr; }
+            .map-container { height: 350px; }
+            .config-container { grid-template-columns: 1fr 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚌 PTSE Bus Reroute Project (Demonstration Only)</h1>
+        <p class="subtitle">การวางแผนเส้นทางรถประจำทาง (Peak Hour Model)</p>
+        
+        <!-- Controls -->
+        <div class="card" style="margin-bottom: 0.75rem;">
+            <div class="config-container">
+                <!-- Group 1: General -->
+                <div class="config-group">
+                    <div class="config-group-title">
+                        🛠️ การตั้งค่าทั่วไป
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>จำนวนสายรถเมล์</span><span class="config-value" id="routeCountDisplay">2</span></div>
+                        <input type="range" class="config-slider" id="routeSlider" min="1" max="20" value="2">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>จำนวนมด (Ants)</span><span class="config-value" id="antCountDisplay">10</span></div>
+                        <input type="range" class="config-slider" id="antSlider" min="5" max="50" value="10">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>จำนวนรอบ (Iter)</span><span class="config-value" id="iterCountDisplay">10</span></div>
+                        <input type="range" class="config-slider" id="iterCountSlider" min="3" max="20" value="10">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>Demand Level</span><span class="config-value" id="demandMultDisplay">1.0x</span></div>
+                        <input type="range" class="config-slider" id="demandMultSlider" min="0.1" max="5.0" value="1.0" step="0.1">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>Early Stopping Patience</span><span class="config-value" id="patienceDisplay">∞</span></div>
+                        <input type="range" class="config-slider" id="patienceSlider" min="1" max="21" value="21">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>Logit Parameter (Theta)</span><span class="config-value" id="thetaDisplay">0.3</span></div>
+                        <input type="range" class="config-slider" id="thetaSlider" min="1" max="20" value="3">
+                    </div>
+                </div>
+
+                <!-- Group 2: Operation (Headway/Capacity) -->
+                <div class="config-group">
+                    <div class="config-group-title">🚍 การเดินรถ (Operation)</div>
+                    <div class="config-item">
+                        <div class="config-label"><span>ความถี่ (นาที)</span><span class="config-value" id="headwayDisplay">10</span></div>
+                        <input type="range" class="config-slider" id="headwaySlider" min="5" max="60" value="10" step="5">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>ความจุ (คน/คัน)</span><span class="config-value" id="capacityDisplay">50</span></div>
+                        <input type="range" class="config-slider" id="capacitySlider" min="20" max="60" value="50" step="5">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>Base Dwell Time (เวลาจอดพื้นฐาน)</span><span class="config-value" id="dwellTimeDisplay">1.0</span></div>
+                        <input type="range" class="config-slider" id="dwellTimeSlider" min="0" max="5" value="1.0" step="0.5">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>ความเร็วเฉลี่ย (กม./ชม.)</span><span class="config-value" id="avgSpeedDisplay">20</span></div>
+                        <input type="range" class="config-slider" id="avgSpeedSlider" min="10" max="50" value="20" step="5">
+                    </div>
+                </div>
+
+                <!-- Group 3: Economics -->
+                <div class="config-group">
+                    <div class="config-group-title">💰 เศรษฐศาสตร์</div>
+                    <div class="config-item">
+                        <div class="config-label"><span>มูลค่ารอคอย (บ./นาที)</span><span class="config-value" id="votWaitDisplay">3</span></div>
+                        <input type="range" class="config-slider" id="votWaitSlider" min="1" max="20" value="3" step="0.5">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>มูลค่าเวลาปกติ (บ./นาที)</span><span class="config-value" id="votDisplay">1</span></div>
+                        <input type="range" class="config-slider" id="votSlider" min="1" max="10" value="1" step="0.5">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>ค่าเช่ารถ (บ./ชม.)</span><span class="config-value" id="rentDisplay">250</span></div>
+                        <input type="range" class="config-slider" id="rentSlider" min="50" max="500" value="250" step="10">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>Unserved Penalty (บ./คน)</span><span class="config-value" id="penaltyDisplay">200</span></div>
+                        <input type="range" class="config-slider" id="penaltyDisplay" min="0" max="1000" value="200" step="50">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>ค่าเดินรถ (บ./กม.)</span><span class="config-value" id="opCostConfigDisplay">15</span></div>
+                        <input type="range" class="config-slider" id="opCostSlider" min="0" max="20" value="15" step="1">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>ค่าโดยสาร (บาท/เที่ยว)</span><span class="config-value" id="fareDisplay">15</span></div>
+                        <input type="range" class="config-slider" id="fareSlider" min="0" max="50" value="15" step="1">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>Transfer Penalty Exp</span><span class="config-value" id="transferPenaltyDisplay">2</span></div>
+                        <input type="range" class="config-slider" id="transferPenaltySlider" min="1" max="10" value="2" step="0.1">
+                    </div>
+                </div>
+                
+                <!-- Group 4: Advanced/Hidden Params -->
+                <div class="config-group">
+                    <div class="config-group-title">⚙️ อัลกอริทึม & ข้อจำกัด</div>
+                    <div class="config-item">
+                        <div class="config-label"><span>ระยะทางสูงสุด/สาย (กม.)</span><span class="config-value" id="maxRouteLenDisplay">30</span></div>
+                        <input type="range" class="config-slider" id="maxRouteLenSlider" min="5" max="50" value="30" step="1">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>Pheromone (Alpha)</span><span class="config-value" id="alphaDisplay">1.0</span></div>
+                        <input type="range" class="config-slider" id="alphaSlider" min="0" max="5" value="1.0" step="0.1">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>Heuristic (Beta)</span><span class="config-value" id="betaDisplay">1.5</span></div>
+                        <input type="range" class="config-slider" id="betaSlider" min="0" max="5" value="1.5" step="0.1">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>Evaporation</span><span class="config-value" id="evapDisplay">0.3</span></div>
+                        <input type="range" class="config-slider" id="evapSlider" min="0.05" max="0.95" value="0.3" step="0.05">
+                    </div>
+                    <div class="config-item">
+                        <div class="config-label"><span>Random Seed (ว่าง = สุ่ม)</span></div>
+                        <input type="text" id="seedInput" class="config-input" placeholder="e.g. 1234">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="allocation-selector">
+                <button class="alloc-btn active" data-method="aon" onclick="setAllocationMethod('aon')">All-or-Nothing</button>
+                <button class="alloc-btn" data-method="logit" onclick="setAllocationMethod('logit')">Logit Model</button>
+            </div>
+            
+            <div class="control-panel">
+                <select id="networkSelect" class="network-select" onchange="changeNetwork()">
+                    <option value="rangsit">📍 Rangsit (Original)</option>
+                    <option value="bangkok">🏙️ Bangkok (Victory Monument)</option>
+                </select>
+                <button id="startBtn" class="btn btn-primary" onclick="startOptimization()">▶️ เริ่มการจำลอง</button>
+                <button id="instantBtn" class="btn btn-instant" onclick="runInstant()">⚡ ประมวลผลทันที</button>
+                <button id="pauseBtn" class="btn btn-secondary" onclick="togglePause()" disabled>⏸️ หยุดชั่วคราว</button>
+                <button id="resetBtn" class="btn btn-secondary" onclick="resetSimulation()">🔄 รีเซ็ตระบบ</button>
+                <button id="regenBtn" class="btn btn-warning" onclick="regenerateDemand()">🎲 สุ่มโจทย์ใหม่</button>
+                <button id="showBestBtn" class="btn btn-success" onclick="showBestSolution()" disabled>🏆 ดูผลที่ดีที่สุด</button>
+                <button id="sensitivityBtn" class="btn btn-warning" onclick="runSensitivityAnalysis()">📈 วิเคราะห์ความอ่อนไหว</button>
+            </div>
+
+            <div class="speed-control">
+                <span class="speed-label">ความเร็วแสดงผล: <span id="speedDisplay">100x</span></span>
+                <input type="range" class="config-slider" id="speedSlider" min="1" max="1000" value="100" style="max-width: 200px;">
+            </div>
+            
+            <div class="iteration-display" id="iterationDisplay"></div>
+            <div class="progress-container"><div class="progress-bar" id="progressBar"></div></div>
+            <div class="status-display" id="statusDisplay">พร้อมเริ่ม ACO บนโครงข่ายใหม่</div>
+        </div>
+
+        <!-- Full Width Map -->
+        <div class="full-width-section">
+            <div class="card">
+                <div class="card-title">
+                    <span>🗺️ แผนที่โครงข่าย (Network Topology)</span>
+                    <div class="view-controls">
+                        <label class="view-check"><input type="checkbox" id="showPheroCheck" onchange="renderPheromones()"> Pheromone</label>
+                        <label class="view-check"><input type="checkbox" id="showDesireCheck" onchange="renderDesireLines()"> Desire Lines</label>
+                    </div>
+                </div>
+                <div class="map-container" id="mapContainer">
+                    <svg class="map-svg" id="mapSvg" viewBox="0 0 1200 650">
+                        <g id="map-desire-layer"></g> <!-- Bottom -->
+                        <g id="map-edges-base"></g>
+                        <g id="map-pheromone-layer"></g>
+                        <g id="map-routes-layer"></g>
+                        <g id="map-nodes-layer"></g>
+                        <g id="map-labels-layer"></g>
+                    </svg>
+                    <div class="tooltip" id="tooltip"></div>
+                </div>
+                <div class="map-legend" id="mapLegend"></div>
+            </div>
+        </div>
+        
+        <!-- Split Dashboard (Solution + OD) -->
+        <div class="grid-dashboard">
+            <!-- Left: Solution -->
+            <div class="card">
+                <div class="card-title">
+                    <span>🐜 <span id="solutionTitle">ผลลัพธ์</span></span>
+                    <button class="btn btn-sm" onclick="toggleAllRoutes()">👁️ เปิด/ปิดทั้งหมด</button>
+                </div>
+                <div style="font-size: 0.65rem; color: var(--text-secondary); text-align: center; margin-bottom: 0.3rem;">
+                    (กดที่แถบสีเพื่อเปิด/ปิด, เอาเมาส์ชี้เพื่อ Highlight)
+                </div>
+                
+                <div id="routesContainer"></div>
+                
+                <div class="info-grid">
+                    <div class="info-box">
+                        <div class="info-label">Social User Cost</div>
+                        <div class="info-value user" id="userCostDisplay">—</div>
+                        <div class="info-tooltip">
+                            <div style="border-bottom:1px solid #333; margin-bottom:2px; font-weight:bold; color:var(--accent-yellow)">ต้นทุนผู้ใช้รวม (ไม่รวมค่าโดยสาร)</div>
+                            <div class="info-row"><span>ค่าเสียเวลาเดินทาง:</span><span id="tipUserTime">-</span></div>
+                            <div class="info-row"><span>ค่าเสียเวลารอรถ:</span><span id="tipUserWait">-</span></div>
+                            <div class="info-row"><span>ค่าโดยสาร (แยกต่างหาก):</span><span id="tipUserFare">-</span></div>
+                            <div class="info-row"><span>ค่าปรับตกค้าง:</span><span id="tipUserPenalty" style="color:var(--accent-red)">-</span></div>
+                        </div>
+                        <div class="info-sub">Travel: <span id="valUserTime">-</span></div>
+                        <div class="info-sub">Wait: <span id="valUserWait">-</span></div>
+                        <div class="info-sub">Fare: <span id="valUserFare">-</span></div>
+                        <div class="info-sub">Penalty: <span id="valUserPen" style="color:var(--accent-red)">-</span></div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-label">Operator (THB/hr)</div>
+                        <div class="info-value operator" id="opCostDisplay">—</div>
+                        <div class="info-tooltip">
+                            <div style="border-bottom:1px solid #333; margin-bottom:2px; font-weight:bold; color:var(--accent-purple)">ต้นทุนผู้เดินรถ</div>
+                            <div class="info-row"><span>จำนวนรถรวม:</span><span id="tipOpFleet" style="color:#fff">-</span></div>
+                            <div class="info-row"><span>ค่าเช่ารถ:</span><span id="tipOpFixed">-</span></div>
+                            <div class="info-row"><span>ระยะทางรวม/ชม.:</span><span id="tipOpDist" style="color:#fff">-</span></div>
+                            <div class="info-row"><span>ค่าน้ำมัน/ซ่อม:</span><span id="tipOpVar">-</span></div>
+                        </div>
+                        <div class="info-sub">Fleet: <span id="valOpFleet">-</span></div>
+                        <div class="info-sub">Rental: <span id="valOpFixed">-</span></div>
+                        <div class="info-sub">Fuel: <span id="valOpVar">-</span></div>
+                    </div>
+                    <div class="info-box">
+                        <div class="info-label">Total Social (THB/hr)</div>
+                        <div class="info-value total" id="totalCostDisplay">—</div>
+                        <div class="info-sub" style="justify-content:center; color:var(--text-secondary)">(User + Operator)</div>
+                    </div>
+                </div>
+                
+                <div class="card-title" style="margin-top: 1rem; border-top: 1px solid var(--border); padding-top: 0.5rem; font-size: 0.8rem;">
+                    <span>📋 เลือกผลลัพธ์ (Comparison)</span>
+                    <select id="iterSelect" class="iter-select" onchange="createComparisonGrid()">
+                        <option value="0">รอบที่ 1</option>
+                    </select>
+                </div>
+                <div class="comparison-grid" id="comparisonGrid">
+                    <div style="color: var(--text-secondary); font-size: 0.7rem; text-align: center; padding: 0.5rem;">
+                        กดเริ่มเพื่อดูผลลัพธ์
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right: OD Table -->
+            <div class="card">
+                <div class="card-title">
+                    <div class="od-search-container">
+                        <span>📊 OD Demand (All Pairs)</span>
+                        <input type="text" id="odSearch" class="od-search-input" placeholder="🔍 ค้นหา..." onkeyup="renderODTable()">
+                    </div>
+                </div>
+                <div style="max-height: 400px; overflow-y: auto;">
+                    <table class="od-table">
+                        <thead>
+                            <tr id="odTableHeader"></tr>
+                        </thead>
+                        <tbody id="odTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- SENSITIVITY RESULT CARD (BOTTOM SLOT) -->
+        <div class="full-width-section" id="sensitivitySection" style="display:none;">
+            <div class="card">
+                <div class="card-title">📈 ผลการวิเคราะห์ความอ่อนไหว (Sensitivity Analysis Results)</div>
+                <div style="text-align: center; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.8rem;">
+                    กราฟเปรียบเทียบต้นทุนรวม (Total Cost) เมื่อแปรผันจำนวนสายรถเมล์
+                </div>
+                
+                <div class="chart-container">
+                    <svg id="sensChart" class="chart-svg"></svg>
+                    <div id="chartTooltip" class="chart-tooltip"></div>
+                </div>
+                
+                <div class="info-grid" id="sensResults" style="margin-top: 1rem; grid-template-columns: 1fr;">
+                    <!-- Results appended here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DATA SETS ---
+        const networks = {
+            rangsit: {
+                nodes: [
+                    { id: 1, name: "Future Park", nameEn: "Future Park", x: 600, y: 300 },
+                    { id: 2, name: "Major Rangsit", nameEn: "Major Rangsit", x: 600, y: 450 },
+                    { id: 3, name: "Talad Rangsit", nameEn: "Talad Rangsit", x: 400, y: 450 },
+                    { id: 4, name: "Zeer Rangsit", nameEn: "Zeer Rangsit", x: 600, y: 600 },
+                    { id: 5, name: "Bangkok Univ.", nameEn: "Bangkok Univ.", x: 600, y: 50 },
+                    { id: 6, name: "Klong 1", nameEn: "Klong 1", x: 800, y: 300 },
+                    { id: 7, name: "Klong 2", nameEn: "Klong 2", x: 1000, y: 300 },
+                    { id: 8, name: "Muang Ake", nameEn: "Muang Ake", x: 600, y: 180 },
+                    { id: 9, name: "Saphan Daeng", nameEn: "Saphan Daeng", x: 800, y: 450 },
+                    { id: 10, name: "Pathum Thani", nameEn: "Pathum Thani", x: 200, y: 450 },
+                ],
+                edges: [
+                    [5, 8, 8], [8, 1, 6], [1, 6, 10], [6, 7, 8],
+                    [1, 2, 5], [1, 3, 8], [6, 9, 8], [7, 9, 10],
+                    [2, 9, 10], [2, 3, 6], [2, 4, 12], [3, 10, 15],
+                ]
+            },
+            bangkok: {
+                nodes: [
+                    { id: 1, name: "Victory Monument", nameEn: "Victory Mon.", x: 500, y: 250 },
+                    { id: 2, name: "Phaya Thai", nameEn: "Phaya Thai", x: 500, y: 350 },
+                    { id: 3, name: "Ratchathewi", nameEn: "Ratchathewi", x: 500, y: 420 },
+                    { id: 4, name: "Siam", nameEn: "Siam", x: 550, y: 480 },
+                    { id: 5, name: "MBK", nameEn: "MBK", x: 450, y: 480 },
+                    { id: 6, name: "Sam Yan", nameEn: "Sam Yan", x: 450, y: 580 },
+                    { id: 7, name: "Silom", nameEn: "Silom", x: 550, y: 600 },
+                    { id: 8, name: "Pratunam", nameEn: "Pratunam", x: 650, y: 420 },
+                    { id: 9, name: "Central World", nameEn: "Central World", x: 650, y: 480 },
+                    { id: 10, name: "Chidlom", nameEn: "Chidlom", x: 750, y: 480 },
+                    { id: 11, name: "Asok", nameEn: "Asok", x: 950, y: 500 },
+                    { id: 12, name: "Nana", nameEn: "Nana", x: 850, y: 490 },
+                    { id: 13, name: "Din Daeng", nameEn: "Din Daeng", x: 700, y: 250 },
+                    { id: 14, name: "Rama 9", nameEn: "Rama 9", x: 900, y: 250 },
+                    { id: 15, name: "Huai Khwang", nameEn: "Huai Khwang", x: 900, y: 150 },
+                    { id: 16, name: "Ari", nameEn: "Ari", x: 500, y: 150 },
+                    { id: 17, name: "Saphan Khwai", nameEn: "Saphan Khwai", x: 500, y: 80 },
+                    { id: 18, name: "Chatuchak", nameEn: "Chatuchak", x: 400, y: 80 },
+                    { id: 19, name: "Lad Phrao", nameEn: "Lad Phrao", x: 700, y: 80 },
+                    { id: 20, name: "Ratchada", nameEn: "Ratchada", x: 900, y: 80 }
+                ],
+                edges: [
+                    [16, 1, 8], [17, 16, 5], [18, 17, 6], [1, 2, 5],
+                    [2, 3, 4], [3, 4, 5], [4, 5, 3], [5, 6, 6],
+                    [4, 9, 5], [9, 8, 4], [8, 3, 5], [1, 13, 10],
+                    [13, 14, 8], [14, 15, 6], [15, 20, 10], [20, 19, 8],
+                    [19, 18, 12], [9, 10, 4], [10, 12, 5], [12, 11, 5],
+                    [11, 14, 10], [7, 6, 5], [7, 4, 8]
+                ]
+            }
+        };
+
+        let currentNetworkKey = 'rangsit';
+        let networkData = { nodes: {}, edges: {}, edgeList: [], odDemand: [] };
+        
+        let config = { 
+            antCount: 10, iterations: 10, speed: 100, theta: 0.3, allocationMethod: 'aon', odCount: 90, routeCount: 2,
+            vot: 1, votWait: 3, transferTime: 5, 
+            penalty: 200, 
+            routeCost: 250, 
+            opCost: 15,
+            headway: 10,    
+            capacity: 50,
+            avgSpeedKmH: 20, 
+            maxRouteLengthKm: 30, 
+            alpha: 1.0, beta: 1.5, evaporation: 0.3, seed: null,
+            demandMultiplier: 1.0,
+            fare: 15,
+            transferPenaltyExponent: 2.0,
+            dwellTime: 1.0,
+            earlyStoppingPatience: Infinity 
+        };
+        const AVG_SPEED_KM_MIN = 0.5; 
+        
+        let antSolutions = [];
+        let pheromones = {};
+        let bestAntIndex = 0;
+        let currentIteration = 0, currentAnt = 0;
+        let isRunning = false, isPaused = false;
+        let isSensitivityRunning = false; // New flag for sensitivity mode
+        let isInstantRunning = false; // New flag for instant run mode
+        let animationTimer = null;
+        let routeVisibility = new Array(20).fill(true);
+        let rngState = 12345; 
+        
+        let adjList = {};
+
+        const routeColors = [
+            '#3b82f6', '#ef4444', '#22c55e', '#f97316', '#a855f7', 
+            '#06b6d4', '#ec4899', '#eab308', '#14b8a6', '#6366f1'
+        ];
+        
+        function myRandom() {
+            if (config.seed !== null && config.seed !== "") {
+                rngState = (rngState * 1664525 + 1013904223) % 4294967296;
+                return rngState / 4294967296;
+            } else {
+                return Math.random();
+            }
+        }
+
+        function initRNG() {
+            const seedInput = document.getElementById('seedInput').value;
+            if(seedInput.trim() !== "") {
+                config.seed = parseInt(seedInput);
+                rngState = config.seed;
+            } else {
+                config.seed = null;
+            }
+        }
+
+        function init() {
+            initSliders();
+            updateIterationDots();
+            buildNetwork();
+            initRNG(); 
+            generateODDemand();
+            renderMapBase();
+            updateDynamicUI();
+            renderODTable();
+            renderDesireLines();
+        }
+        
+        function changeNetwork() {
+            const select = document.getElementById('networkSelect');
+            currentNetworkKey = select.value;
+            
+            // Re-init with new network
+            initRNG(); // Reset RNG to ensure consistency per network if seed is present
+            buildNetwork();
+            generateODDemand();
+            
+            // Reset Simulation State
+            resetSimulation();
+            
+            // Render
+            renderMapBase();
+            updateDynamicUI();
+            renderODTable();
+            renderDesireLines();
+            
+            document.getElementById('statusDisplay').innerText = `เปลี่ยนแผนที่เรียบร้อย: ${currentNetworkKey === 'rangsit' ? 'รังสิต' : 'กรุงเทพฯ'}`;
+        }
+
+        function initSliders() {
+            const bind = (id, key, dispId, scale=1, mode='calc') => {
+                const el = document.getElementById(id);
+                if (el) { 
+                    el.addEventListener('change', (e) => { 
+                        config[key] = parseFloat(e.target.value) * scale;
+                        const dispEl = document.getElementById(dispId);
+                        if(dispEl) dispEl.textContent = (config[key]).toFixed(scale < 1 ? 1 : 0);
+                        
+                        if(key === 'routeCount') {
+                            updateDynamicUI();
+                            if(mode === 'run' && antSolutions.length > 0) runInstant();
+                        } else {
+                            if(mode === 'run' && antSolutions.length > 0) runInstant();
+                            else if(mode === 'calc' && antSolutions.length > 0) recalculateAllSolutions();
+                        }
+                    });
+                    el.addEventListener('input', (e) => {
+                         const val = parseFloat(e.target.value) * scale;
+                         const dispEl = document.getElementById(dispId);
+                         if(dispEl) dispEl.textContent = val.toFixed(scale < 1 ? 1 : 0);
+                    });
+                }
+            };
+            
+            bind('routeSlider', 'routeCount', 'routeCountDisplay', 1, 'run');
+            bind('antSlider', 'antCount', 'antCountDisplay', 1, 'run');
+            bind('iterSlider', 'iterations', 'iterCountDisplay', 1, 'run');
+            // Fixed ID here: iterCountSlider -> iterSlider
+            const iterSlider = document.getElementById('iterCountSlider'); 
+            if(iterSlider) {
+                 iterSlider.addEventListener('change', (e) => { 
+                    config.iterations = parseFloat(e.target.value);
+                    document.getElementById('iterCountDisplay').textContent = config.iterations;
+                    if(antSolutions.length > 0) runInstant();
+                });
+                iterSlider.addEventListener('input', (e) => {
+                     document.getElementById('iterCountDisplay').textContent = e.target.value;
+                });
+            }
+
+            bind('maxRouteLenSlider', 'maxRouteLengthKm', 'maxRouteLenDisplay', 1, 'run');
+            bind('alphaSlider', 'alpha', 'alphaDisplay', 1.0, 'run');
+            bind('betaSlider', 'beta', 'betaDisplay', 1.0, 'run');
+            bind('evapSlider', 'evaporation', 'evapDisplay', 1.0, 'run');
+            
+            bind('thetaSlider', 'theta', 'thetaDisplay', 0.1, 'calc');
+            bind('headwaySlider', 'headway', 'headwayDisplay', 1, 'calc');
+            bind('capacitySlider', 'capacity', 'capacityDisplay', 1, 'calc');
+            bind('avgSpeedSlider', 'avgSpeedKmH', 'avgSpeedDisplay', 1, 'calc');
+            bind('dwellTimeSlider', 'dwellTime', 'dwellTimeDisplay', 1.0, 'calc');
+            bind('votWaitSlider', 'votWait', 'votWaitDisplay', 0.5, 'calc');
+            bind('votSlider', 'vot', 'votDisplay', 0.5, 'calc');
+            bind('rentSlider', 'routeCost', 'rentDisplay', 1, 'calc');
+            bind('opCostSlider', 'opCost', 'opCostConfigDisplay', 1, 'calc');
+            bind('penaltyDisplay', 'penalty', 'penaltyDisplay', 1, 'calc');
+            bind('fareSlider', 'fare', 'fareDisplay', 1, 'calc');
+            bind('transferPenaltySlider', 'transferPenaltyExponent', 'transferPenaltyDisplay', 0.1, 'calc');
+
+            const elPatience = document.getElementById('patienceSlider');
+            if (elPatience) {
+                elPatience.addEventListener('input', (e) => {
+                    const val = parseInt(e.target.value);
+                    const disp = document.getElementById('patienceDisplay');
+                    if (val > 20) {
+                        config.earlyStoppingPatience = Infinity;
+                        disp.textContent = "∞";
+                    } else {
+                        config.earlyStoppingPatience = val;
+                        disp.textContent = val;
+                    }
+                });
+            }
+
+            const elDemand = document.getElementById('demandMultSlider');
+            if(elDemand) {
+                elDemand.addEventListener('input', (e) => {
+                    const val = parseFloat(e.target.value);
+                    config.demandMultiplier = val;
+                    document.getElementById('demandMultDisplay').textContent = val.toFixed(1) + 'x';
+                    
+                    networkData.odDemand.forEach(od => {
+                        od.demand = Math.round(od.baseDemand * config.demandMultiplier);
+                    });
+                    
+                    if(antSolutions.length > 0) {
+                        recalculateAllSolutions();
+                        renderODTable(); 
+                    }
+                    renderDesireLines();
+                });
+            }
+            
+            const elSpeed = document.getElementById('speedSlider');
+            if(elSpeed) {
+                elSpeed.addEventListener('input', (e) => {
+                    const v = parseInt(e.target.value);
+                    config.speed = 1000 / v; 
+                    const display = document.getElementById('speedDisplay');
+                    if(display) display.innerHTML = `${v}x`;
+                });
+            }
+            
+            document.getElementById('seedInput').addEventListener('change', (e) => { 
+                initRNG(); 
+                if(antSolutions.length > 0) runInstant();
+            });
+        }
+        
+        function updateIterationDots() {
+            const c = document.getElementById('iterationDisplay');
+            c.innerHTML = '';
+            for (let i = 1; i <= config.iterations; i++) {
+                const d = document.createElement('div');
+                d.className = 'iteration-dot';
+                d.textContent = i;
+                c.appendChild(d);
+            }
+        }
+        
+        function setAllocationMethod(method) {
+            config.allocationMethod = method;
+            document.querySelectorAll('.alloc-btn').forEach(b => b.classList.toggle('active', b.dataset.method === method));
+            if (antSolutions.length > 0) recalculateAllSolutions();
+        }
+        
+        function updateDynamicUI() {
+            const legend = document.getElementById('mapLegend');
+            legend.innerHTML = '';
+            for(let i=0; i<config.routeCount; i++) {
+                const cIdx = i % routeColors.length; 
+                legend.innerHTML += `<div class="legend-item"><div class="legend-line" style="background:${routeColors[cIdx]}"></div><span>สาย ${i+1}</span></div>`;
+            }
+            legend.innerHTML += `<div class="legend-item"><div class="legend-line gray"></div><span>ถนน</span></div>`;
+
+            const routesContainer = document.getElementById('routesContainer');
+            routesContainer.innerHTML = '';
+            routeVisibility = new Array(config.routeCount).fill(true);
+            
+            for(let i=0; i<config.routeCount; i++) {
+                const cIdx = i % routeColors.length; 
+                routesContainer.innerHTML += `
+                    <div class="route-item" id="routeItem${i}" onclick="toggleRoute(${i})" onmouseenter="highlightRoute(${i})" onmouseleave="unhighlightRoute(${i})">
+                        <div class="route-color" style="background:${routeColors[cIdx]}"></div>
+                        <span class="route-label" id="routeLabel${i}">สาย ${i+1}:</span>
+                        <span class="route-path" id="routeDisplay${i}">—</span>
+                        <div class="visibility-icon" id="visIcon${i}">👁️</div>
+                    </div>
+                `;
+            }
+            const odHeader = document.getElementById('odTableHeader');
+            odHeader.innerHTML = `<th>OD</th><th>Pax</th><th style="min-width:140px;">ทางเลือก (Cost)</th><th>%</th>`;
+            renderODTable();
+        }
+        
+        let isAllRoutesVisible = true;
+        function toggleAllRoutes() {
+            isAllRoutesVisible = !isAllRoutesVisible;
+            routeVisibility.fill(isAllRoutesVisible);
+            for(let i=0; i<config.routeCount; i++) {
+                const item = document.getElementById(`routeItem${i}`);
+                const icon = document.getElementById(`visIcon${i}`);
+                if(item && icon) {
+                    if (isAllRoutesVisible) {
+                        item.classList.remove('hidden-route');
+                        icon.style.opacity = 1;
+                    } else {
+                        item.classList.add('hidden-route');
+                        icon.style.opacity = 0.5;
+                    }
+                }
+            }
+            if (window.currentDisplayedSolutionIndex !== undefined && antSolutions[window.currentDisplayedSolutionIndex]) {
+                visualizeRoutes(antSolutions[window.currentDisplayedSolutionIndex]);
+            }
+        }
+        
+        function toggleRoute(index) {
+            routeVisibility[index] = !routeVisibility[index];
+            const item = document.getElementById(`routeItem${index}`);
+            const icon = document.getElementById(`visIcon${index}`);
+            if(item && icon) {
+                 item.classList.toggle('hidden-route', !routeVisibility[index]);
+                 icon.style.opacity = routeVisibility[index] ? 1 : 0.5;
+            }
+            if (window.currentDisplayedSolutionIndex !== undefined) {
+                visualizeRoutes(antSolutions[window.currentDisplayedSolutionIndex]);
+            }
+        }
+        
+        function highlightRoute(index) {
+            const item = document.getElementById(`routeItem${index}`);
+            if(item) item.classList.add('highlighted');
+            
+            // Highlight SVG Path
+            const pathId = `route-path-${index}`;
+            const path = document.getElementById(pathId);
+            if(path) {
+                path.classList.add('highlighted');
+                // Move to end of container to bring to front
+                path.parentNode.appendChild(path);
+                
+                // Dim others
+                document.querySelectorAll('.active-route-line').forEach(el => {
+                    if(el.id !== pathId) el.classList.add('dimmed');
+                });
+            }
+        }
+        
+        function unhighlightRoute(index) {
+            const item = document.getElementById(`routeItem${index}`);
+            if(item) item.classList.remove('highlighted');
+            
+            const pathId = `route-path-${index}`;
+            const path = document.getElementById(pathId);
+            if(path) path.classList.remove('highlighted');
+            
+             document.querySelectorAll('.active-route-line').forEach(el => {
+                el.classList.remove('dimmed');
+            });
+        }
+
+        function buildNetwork() {
+            const selectedNetwork = networks[currentNetworkKey];
+            
+            networkData.nodes = {};
+            selectedNetwork.nodes.forEach(n => { networkData.nodes[n.id] = { ...n }; });
+            
+            networkData.edges = {};
+            networkData.edgeList = [];
+            
+            const refSpeedKmMin = 20 / 60;
+
+            adjList = {}; // Initialize adjList
+            Object.keys(networkData.nodes).forEach(id => adjList[id] = []);
+
+            selectedNetwork.edges.forEach(([from, to, timeMin]) => {
+                const key = `${Math.min(from,to)}-${Math.max(from,to)}`;
+                if (!networkData.edges[key]) {
+                    const distKm = timeMin * refSpeedKmMin;
+                    networkData.edges[key] = distKm; 
+                    networkData.edges[`${from}-${to}`] = distKm;
+                    networkData.edges[`${to}-${from}`] = distKm;
+                    networkData.edgeList.push(key);
+                    
+                    // Populate AdjList
+                    adjList[from].push({ node: to, weight: distKm });
+                    adjList[to].push({ node: from, weight: distKm });
+                }
+            });
+            pheromones = {};
+            networkData.edgeList.forEach(e => pheromones[e] = 10);
+        }
+        
+        function generateODDemand() {
+            networkData.odDemand = [];
+            const nodes = Object.values(networkData.nodes);
+            let count = 0;
+            for (let i = 0; i < nodes.length; i++) {
+                for (let j = 0; j < nodes.length; j++) {
+                    if (i === j) continue;
+                    const baseDemand = Math.floor(myRandom() * 8) + 2; 
+                    networkData.odDemand.push({
+                        from: nodes[i].id, to: nodes[j].id,
+                        fromName: nodes[i].name, toName: nodes[j].name,
+                        baseDemand: baseDemand,
+                        demand: Math.round(baseDemand * config.demandMultiplier),
+                        originalIndex: count
+                    });
+                    count++;
+                }
+            }
+        }
+        
+        function renderMapBase() {
+            const svg = document.getElementById('mapSvg');
+            const gEdges = document.getElementById('map-edges-base');
+            const gNodes = document.getElementById('map-nodes-layer');
+            const gLabels = document.getElementById('map-labels-layer');
+            
+            gEdges.innerHTML = '';
+            gNodes.innerHTML = '';
+            gLabels.innerHTML = '';
+            
+            networkData.edgeList.forEach(key => {
+                const [from, to] = key.split('-').map(Number);
+                const n1 = networkData.nodes[from];
+                const n2 = networkData.nodes[to];
+                const dist = networkData.edges[key]; 
+                
+                if (n1 && n2) {
+                    gEdges.innerHTML += `<line x1="${n1.x}" y1="${n1.y}" x2="${n2.x}" y2="${n2.y}" class="map-edge-base"/>`;
+                    gEdges.innerHTML += `<line x1="${n1.x}" y1="${n1.y}" x2="${n2.x}" y2="${n2.y}" class="map-edge-inner"/>`;
+                    
+                    const mx = (n1.x + n2.x) / 2, my = (n1.y + n2.y) / 2;
+                    gLabels.innerHTML += `<rect x="${mx-12}" y="${my-7}" width="24" height="14" fill="#0d1117" rx="3" stroke="#1e293b" stroke-width="1"/>`;
+                    gLabels.innerHTML += `<text x="${mx}" y="${my+4}" class="edge-time">${dist.toFixed(1)}</text>`; 
+                }
+            });
+            
+            Object.values(networkData.nodes).forEach(node => {
+                const circleBg = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circleBg.setAttribute('cx', node.x);
+                circleBg.setAttribute('cy', node.y);
+                circleBg.setAttribute('r', 16); 
+                circleBg.setAttribute('class', 'map-node-bg');
+                gNodes.appendChild(circleBg);
+
+                const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                circle.setAttribute('id', `node-${node.id}`);
+                circle.setAttribute('cx', node.x);
+                circle.setAttribute('cy', node.y);
+                circle.setAttribute('r', 12); 
+                circle.setAttribute('class', 'map-node');
+                circle.addEventListener('mouseenter', (e) => showTooltip(e, node));
+                circle.addEventListener('mouseleave', hideTooltip);
+                gNodes.appendChild(circle);
+                
+                gLabels.innerHTML += `<text x="${node.x}" y="${node.y-22}" class="node-label" style="stroke: #0a0a0f; stroke-width: 4px; stroke-opacity: 0.9;">${node.name}</text>`;
+                gLabels.innerHTML += `<text x="${node.x}" y="${node.y-22}" class="node-label">${node.name}</text>`;
+            });
+        }
+        
+        function renderPheromones() {
+            const gPhero = document.getElementById('map-pheromone-layer');
+            gPhero.innerHTML = '';
+            if(!document.getElementById('showPheroCheck').checked) return;
+            
+            // Normalize pheromones
+            let maxPhero = 0;
+            let minPhero = Infinity;
+            Object.values(pheromones).forEach(v => { 
+                if(v > maxPhero) maxPhero = v; 
+                if(v < minPhero) minPhero = v;
+            });
+            
+            if(maxPhero === 0) return;
+            
+            networkData.edgeList.forEach(key => {
+                const val = pheromones[key] || 0;
+                // Threshold lowered to show even weak trails
+                if(val < 0.1) return; 
+                
+                const [from, to] = key.split('-').map(Number);
+                const n1 = networkData.nodes[from];
+                const n2 = networkData.nodes[to];
+                
+                // Dynamic scaling based on max value
+                const ratio = (val / maxPhero);
+                const opacity = Math.max(0.1, Math.min(0.8, ratio)); 
+                const width = 2 + (ratio * 12);
+                
+                gPhero.innerHTML += `<line x1="${n1.x}" y1="${n1.y}" x2="${n2.x}" y2="${n2.y}" 
+                    class="pheromone-line" stroke-width="${width}" stroke-opacity="${opacity}" />`;
+            });
+        }
+        
+        function renderDesireLines() {
+            const gDesire = document.getElementById('map-desire-layer');
+            gDesire.innerHTML = '';
+            if(!document.getElementById('showDesireCheck').checked) return;
+            
+            let maxDemand = 0;
+            networkData.odDemand.forEach(od => { if(od.demand > maxDemand) maxDemand = od.demand; });
+            
+            networkData.odDemand.forEach(od => {
+                if(od.demand < 3) return; // Don't show very small demand
+                const n1 = networkData.nodes[od.from];
+                const n2 = networkData.nodes[od.to];
+                
+                const opacity = (od.demand / maxDemand) * 0.6;
+                gDesire.innerHTML += `<line x1="${n1.x}" y1="${n1.y}" x2="${n2.x}" y2="${n2.y}" 
+                    class="desire-line" stroke-opacity="${opacity}" />`;
+            });
+        }
+        
+        function showTooltip(e, node) {
+            const tooltip = document.getElementById('tooltip');
+            const rect = document.getElementById('mapContainer').getBoundingClientRect();
+            tooltip.innerHTML = `<div class="name-th">${node.name}</div><div class="name-en">${node.nameEn}</div>`;
+            tooltip.style.display = 'block';
+            tooltip.style.left = `${e.clientX - rect.left + 10}px`;
+            tooltip.style.top = `${e.clientY - rect.top - 30}px`;
+        }
+        function hideTooltip() { document.getElementById('tooltip').style.display = 'none'; }
+
+        function renderODTable() {
+            const tbody = document.getElementById('odTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            const filter = document.getElementById('odSearch') ? document.getElementById('odSearch').value.toLowerCase() : '';
+            const solution = (antSolutions.length > 0 && typeof window.currentDisplayedSolutionIndex !== 'undefined') 
+                ? antSolutions[window.currentDisplayedSolutionIndex] 
+                : null;
+
+            let displayCount = 0;
+            
+            networkData.odDemand.forEach((od, idx) => {
+                if (displayCount > 50) return; 
+                if (filter && !od.fromName.toLowerCase().includes(filter) && !od.toName.toLowerCase().includes(filter)) return;
+
+                let optionHtml = '-';
+                let shareHtml = '-';
+                
+                if (solution && solution.odAllocations[idx]) {
+                    const alloc = solution.odAllocations[idx];
+                    if (alloc.unserved >= od.demand) {
+                        optionHtml = `<span style="color:var(--accent-red)">ไม่ครอบคลุม (Penalty)</span>`;
+                        shareHtml = '<span style="color:var(--accent-red)">100%</span>';
+                    } else {
+                        optionHtml = '';
+                        shareHtml = '';
+                        
+                        alloc.allocatedPaths.forEach(p => {
+                            let routeStr = '';
+                            p.segments.forEach((s, i) => {
+                                if (i > 0) {
+                                    const transferNode = networkData.nodes[s.from].name;
+                                    routeStr += ` <span style="color:#666; font-size:0.7em;"> ➝ ${transferNode} ➝ </span> `;
+                                }
+                                const dir = s.direction === 'F' ? 'A' : 'B';
+                                routeStr += `<span class="mini-badge" style="background:${routeColors[s.route%10]}">สาย ${s.route+1}${dir}</span>`;
+                            });
+                            
+                            optionHtml += `<div class="time-item" style="margin-bottom:4px;">
+                                ${routeStr} <span style="color:#aaa; font-size:0.65rem; margin-left:4px;">(${Math.round(p.time)} min)</span>
+                            </div>`;
+                            
+                            const pct = (p.share * 100).toFixed(1);
+                            const barColor = pct > 50 ? 'var(--accent-green)' : 'var(--accent-blue)';
+                            shareHtml += `<div class="time-item" style="justify-content: flex-end; margin-bottom:4px; font-family:'JetBrains Mono'; color:${barColor};">
+                                ${pct}%
+                            </div>`;
+                        });
+                    }
+                }
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="vertical-align:top;"><div class="od-pair">${od.fromName} <br><span style="color:#666">▼</span><br> ${od.toName}</div></td>
+                    <td style="font-family:'JetBrains Mono'; font-weight:bold; vertical-align:top;">${od.demand}</td>
+                    <td class="time-cell" style="vertical-align:top;">${optionHtml}</td>
+                    <td style="vertical-align:top;">${shareHtml}</td>
+                `;
+                tbody.appendChild(tr);
+                displayCount++;
+            });
+        }
+
+        function createComparisonGrid() {
+            const grid = document.getElementById('comparisonGrid');
+            const iterSelect = document.getElementById('iterSelect');
+            if(!grid || !iterSelect) return;
+            
+            const selectedIter = parseInt(iterSelect.value);
+            const startIdx = selectedIter * config.antCount;
+            const endIdx = startIdx + config.antCount;
+            
+            grid.innerHTML = '';
+            for(let i = startIdx; i < endIdx && i < antSolutions.length; i++) {
+                const sol = antSolutions[i];
+                const el = document.createElement('div');
+                el.className = `mini-network ${i === window.currentDisplayedSolutionIndex ? 'selected' : ''}`;
+                el.onclick = () => selectAnt(i);
+                
+                // Generate Mini Map SVG
+                let svgContent = '';
+                // 1. Base edges (faint)
+                networkData.edgeList.forEach(key => {
+                    const [u, v] = key.split('-').map(Number);
+                    const n1 = networkData.nodes[u];
+                    const n2 = networkData.nodes[v];
+                    svgContent += `<line x1="${n1.x}" y1="${n1.y}" x2="${n2.x}" y2="${n2.y}" stroke="#333" stroke-width="14" stroke-linecap="round"/>`;
+                });
+                
+                // 2. Routes (colored)
+                sol.routesEdges.forEach((edges, rIdx) => {
+                    const color = routeColors[rIdx % routeColors.length];
+                    const offset = (rIdx - (config.routeCount-1)/2) * 5; 
+                    
+                    let pathD = "";
+                    edges.forEach((edgeKey, k) => {
+                        const [u, v] = edgeKey.split('-').map(Number);
+                        const n1 = networkData.nodes[u];
+                        const n2 = networkData.nodes[v];
+                        if(k===0) pathD += `M ${n1.x + offset} ${n1.y + offset} `;
+                        pathD += `L ${n2.x + offset} ${n2.y + offset} `;
+                    });
+                    
+                    svgContent += `<path d="${pathD}" stroke="${color}" stroke-width="8" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+                });
+
+                el.innerHTML = `
+                    <div class="mini-map-wrapper">
+                        <svg viewBox="0 0 1200 650" class="mini-map-svg">
+                            ${svgContent}
+                        </svg>
+                    </div>
+                    <div class="mini-info">
+                        <div class="mini-label">Ant ${i - startIdx + 1}</div>
+                        <div class="mini-cost">${(sol.totalCost/1000).toFixed(1)}k</div>
+                    </div>
+                `;
+                grid.appendChild(el);
+            }
+        }
+
+        function selectAnt(index) {
+            window.currentDisplayedSolutionIndex = index;
+            const sol = antSolutions[index];
+            
+            document.querySelectorAll('.mini-network').forEach(el => el.classList.remove('selected'));
+            createComparisonGrid();
+
+            document.getElementById('userCostDisplay').innerText = sol.socialUserCost.toLocaleString();
+            document.getElementById('opCostDisplay').innerText = sol.opCost.toLocaleString();
+            document.getElementById('totalCostDisplay').innerText = sol.totalCost.toLocaleString();
+            document.getElementById('solutionTitle').innerText = `Ant #${(index % config.antCount) + 1} (Iter ${Math.floor(index/config.antCount)+1})`;
+
+            if(sol.costBreakdown) {
+                document.getElementById('valUserTime').innerText = (sol.costBreakdown.travelTimeCost/1000).toFixed(1) + 'k';
+                document.getElementById('valUserWait').innerText = (sol.costBreakdown.waitTimeCost/1000).toFixed(1) + 'k';
+                document.getElementById('valUserFare').innerText = "(" + (sol.costBreakdown.fareCost/1000).toFixed(1) + 'k)'; 
+                document.getElementById('valUserPen').innerText = (sol.costBreakdown.unservedPenalty/1000).toFixed(1) + 'k';
+                
+                document.getElementById('valOpFleet').innerText = sol.fleetSize + " คัน";
+                document.getElementById('valOpFixed').innerText = (sol.costBreakdown.rentalCost).toLocaleString();
+                document.getElementById('valOpVar').innerText = (sol.costBreakdown.operatingCost).toLocaleString();
+
+                document.getElementById('tipUserTime').innerText = sol.costBreakdown.travelTimeCost.toLocaleString();
+                document.getElementById('tipUserWait').innerText = sol.costBreakdown.waitTimeCost.toLocaleString();
+                document.getElementById('tipUserFare').innerText = sol.costBreakdown.fareCost.toLocaleString();
+                document.getElementById('tipUserPenalty').innerText = sol.costBreakdown.unservedPenalty.toLocaleString();
+                
+                document.getElementById('tipOpFleet').innerText = sol.fleetSize + " คัน";
+                document.getElementById('tipOpFixed').innerText = sol.costBreakdown.rentalCost.toLocaleString();
+                document.getElementById('tipOpDist').innerText = (sol.costBreakdown.totalHourlyKm).toFixed(1) + " กม.";
+                document.getElementById('tipOpVar').innerText = sol.costBreakdown.operatingCost.toLocaleString();
+            }
+
+            sol.routes.forEach((route, i) => {
+                const routeEl = document.getElementById(`routeDisplay${i}`);
+                const labelEl = document.getElementById(`routeLabel${i}`); 
+                
+                if(routeEl) {
+                    routeEl.innerHTML = route.map(nid => networkData.nodes[nid].name).join(' <span style="color:#666">⇄</span> ');
+                }
+                
+                if(labelEl && sol.fleetSizes && sol.fleetSizes[i] !== undefined) {
+                    let loadText = "";
+                    if(sol.loadFactors && sol.loadFactors[i] !== undefined) {
+                        const lf = Math.round(sol.loadFactors[i] * 100);
+                        const color = lf > 100 ? '#ef4444' : '#94a3b8';
+                        loadText = `, Load <span style="color:${color}">${lf}%</span>`;
+                    }
+                    const dist = sol.routeLengths ? sol.routeLengths[i].toFixed(1) : 0;
+                    labelEl.innerHTML = `สาย ${i+1} (${dist} กม., ${sol.fleetSizes[i]} คัน${loadText}):`;
+                }
+            });
+
+            visualizeRoutes(sol);
+            renderODTable();
+        }
+
+        function visualizeRoutes(solution) {
+            const gRoutes = document.getElementById('map-routes-layer');
+            gRoutes.innerHTML = '';
+            
+            solution.routesEdges.forEach((edges, rIdx) => {
+                if (!routeVisibility[rIdx]) return;
+                
+                const color = routeColors[rIdx % routeColors.length];
+                const offset = (rIdx - (config.routeCount-1)/2) * 5; 
+                
+                let pathD = "";
+                edges.forEach((edgeKey, i) => {
+                    const [u, v] = edgeKey.split('-').map(Number);
+                    const n1 = networkData.nodes[u];
+                    const n2 = networkData.nodes[v];
+                    if(i===0) pathD += `M ${n1.x + offset} ${n1.y + offset} `;
+                    pathD += `L ${n2.x + offset} ${n2.y + offset} `;
+                });
+
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', pathD);
+                path.setAttribute('id', `route-path-${rIdx}`);
+                path.setAttribute('class', `active-route-line glow-c${rIdx%10}`);
+                path.setAttribute('stroke', color);
+                path.setAttribute('stroke-width', 4);
+                path.setAttribute('fill', 'none');
+                gRoutes.appendChild(path);
+                
+                if (isRunning && !isPaused) {
+                    const flowPath = path.cloneNode();
+                    flowPath.setAttribute('class', 'route-flowing');
+                    flowPath.setAttribute('stroke', 'rgba(255,255,255,0.4)');
+                    flowPath.setAttribute('stroke-width', 2);
+                    flowPath.removeAttribute('id'); // Remove duplicate ID
+                    gRoutes.appendChild(flowPath);
+                }
+            });
+        }
+
+        function startOptimization() {
+            if (isRunning) return;
+            initRNG(); 
+            
+            isRunning = true;
+            isPaused = false;
+            antSolutions = [];
+            currentIteration = 0;
+            currentAnt = 0;
+            
+            networkData.edgeList.forEach(e => pheromones[e] = 10);
+            renderPheromones();
+            
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('instantBtn').disabled = true;
+            document.getElementById('pauseBtn').disabled = false;
+            document.getElementById('showBestBtn').disabled = true;
+            document.getElementById('regenBtn').disabled = true;
+            document.getElementById('statusDisplay').innerText = "กำลังจำลอง... (Simulation running)";
+            document.body.classList.add('running');
+            
+            animateAnts();
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            const btn = document.getElementById('pauseBtn');
+            btn.innerHTML = isPaused ? "▶️ ต่อ" : "⏸️ หยุดชั่วคราว";
+            
+            // Resume logic depends on what mode we are in
+            if (!isPaused && !isSensitivityRunning && !isInstantRunning) {
+                animateAnts(); // Resume normal simulation
+            }
+            // If isSensitivityRunning or isInstantRunning is true, their async loops will pick it up automatically
+        }
+
+        async function runInstant() {
+            initRNG(); 
+            const status = document.getElementById('statusDisplay');
+            const pauseBtn = document.getElementById('pauseBtn');
+            
+            status.innerText = "กำลังประมวลผลทันที... (Async)";
+            document.getElementById('instantBtn').disabled = true;
+            document.getElementById('startBtn').disabled = true;
+            
+            // Enable Pause Button
+            pauseBtn.disabled = false;
+            pauseBtn.innerHTML = "⏸️ หยุดชั่วคราว";
+            isInstantRunning = true;
+            isPaused = false;
+            
+            document.body.classList.add('running');
+
+            // Reset
+            antSolutions = [];
+            networkData.edgeList.forEach(e => pheromones[e] = 10);
+            currentIteration = 0;
+            
+            // Async Loop with Yield
+            for (let iter = 0; iter < config.iterations; iter++) {
+                // Check stop flag
+                if (!isInstantRunning) break;
+
+                // Yield to UI Thread
+                await new Promise(resolve => setTimeout(resolve, 0));
+
+                // PAUSE LOGIC
+                while (isPaused) {
+                    status.textContent = `Instant Run: หยุดชั่วคราว (กด 'ต่อ' เพื่อทำงานต่อ)`;
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    if (!isInstantRunning) break; // Break if reset while paused
+                }
+                if (!isInstantRunning) break;
+
+                // Restore status text after resume
+                status.innerText = `Running Iteration ${iter + 1}/${config.iterations}...`;
+
+                const iterSols = [];
+                for (let ant = 0; ant < config.antCount; ant++) {
+                    iterSols.push(generateAntSolution());
+                }
+
+                // Pheromone Logic
+                const best = iterSols.reduce((a, b) => b.totalCost < a.totalCost ? b : a);
+                const retention = 1.0 - (config.evaporation || 0.3);
+                networkData.edgeList.forEach(e => pheromones[e] *= retention);
+                best.routesEdges.forEach(edges => {
+                     edges.forEach(edge => {
+                        const [a, b] = edge.split('-').map(Number);
+                        const key = `${Math.min(a,b)}-${Math.max(a,b)}`;
+                        if (pheromones[key]) pheromones[key] = Math.min(95, pheromones[key] + (100000/best.totalCost));
+                    });
+                });
+
+                antSolutions.push(...iterSols);
+                
+                // Update UI Progress
+                const pct = Math.round(((iter + 1) / config.iterations) * 100);
+                document.getElementById('progressBar').style.width = `${pct}%`;
+                
+                renderPheromones(); 
+
+                // Yield to main thread
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+
+            // Finish
+            isRunning = false;
+            isInstantRunning = false;
+            document.body.classList.remove('running');
+            document.getElementById('statusDisplay').innerText = "เสร็จสิ้น (Instant Run)";
+            document.getElementById('instantBtn').disabled = false;
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('showBestBtn').disabled = false;
+            pauseBtn.disabled = true; // Disable pause when done
+            pauseBtn.innerHTML = "⏸️ หยุดชั่วคราว";
+            
+            const iterSelect = document.getElementById('iterSelect');
+            if(iterSelect) {
+                iterSelect.innerHTML = '';
+                for(let i=0; i < config.iterations; i++) iterSelect.innerHTML += `<option value="${i}">รอบที่ ${i+1}</option>`;
+                iterSelect.value = config.iterations - 1;
+            }
+
+            showBestSolution();
+        }
+        
+        // Remove old generateAllAntSolutions as it is replaced by runInstant async logic
+        function generateAllAntSolutions() {
+            // Placeholder for backward compatibility if needed, but runInstant handles logic now.
+            // But runSensitivityAnalysis uses generateAntSolution directly, so it is safe.
+        }
+        
+        function resetSimulation() {
+            isRunning = false;
+            isSensitivityRunning = false; // Stop sensitivity loop
+            isInstantRunning = false; // Stop instant run loop
+            isPaused = false;
+            clearTimeout(animationTimer);
+            antSolutions = [];
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('instantBtn').disabled = false;
+            document.getElementById('pauseBtn').disabled = true;
+            document.getElementById('pauseBtn').innerHTML = "⏸️ หยุดชั่วคราว"; // Reset button text
+            document.getElementById('showBestBtn').disabled = true;
+            document.getElementById('sensitivityBtn').disabled = false; // Re-enable sensitivity button
+            document.getElementById('regenBtn').disabled = false;
+            document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('statusDisplay').innerText = "ระบบรีเซ็ตแล้ว";
+            document.body.classList.remove('running');
+            document.getElementById('map-routes-layer').innerHTML = '';
+            document.getElementById('map-pheromone-layer').innerHTML = '';
+            document.getElementById('userCostDisplay').innerText = '-';
+            document.getElementById('opCostDisplay').innerText = '-';
+            document.getElementById('totalCostDisplay').innerText = '-';
+            
+            for(let i=0; i<config.routeCount; i++) {
+                const el = document.getElementById(`routeDisplay${i}`);
+                if(el) el.innerText = '—';
+                const label = document.getElementById(`routeLabel${i}`); 
+                if(label) label.innerText = `สาย ${i+1}:`;
+            }
+            document.getElementById('odTableBody').innerHTML = '';
+            document.getElementById('comparisonGrid').innerHTML = '<div style="color: var(--text-secondary); font-size: 0.7rem; text-align: center; padding: 0.5rem;">กดเริ่มเพื่อดูผลลัพธ์</div>';
+            
+            networkData.edgeList.forEach(e => pheromones[e] = 10);
+            renderPheromones();
+            updateIterationDots();
+        }
+
+        function regenerateDemand() {
+            initRNG();
+            generateODDemand();
+            renderDesireLines();
+            resetSimulation();
+            document.getElementById('statusDisplay').innerText = "สุ่มโจทย์ใหม่แล้ว (New Demand Generated)";
+            renderODTable(); 
+        }
+
+        function showBestSolution() {
+            if (antSolutions.length === 0) return;
+            let bestVal = Infinity, bestIdx = 0;
+            antSolutions.forEach((s, i) => {
+                if(s.totalCost < bestVal) { bestVal = s.totalCost; bestIdx = i; }
+            });
+            const iter = Math.floor(bestIdx / config.antCount);
+            document.getElementById('iterSelect').value = iter;
+            createComparisonGrid();
+            selectAnt(bestIdx);
+        }
+
+        function animateAnts() {
+            if (!isRunning || isPaused) return;
+
+            const sol = generateAntSolution();
+            antSolutions.push(sol);
+            
+            window.currentDisplayedSolutionIndex = antSolutions.length - 1;
+            selectAnt(window.currentDisplayedSolutionIndex);
+            
+            currentAnt++;
+            if (currentAnt >= config.antCount) {
+                const startIdx = currentIteration * config.antCount;
+                const endIdx = startIdx + config.antCount;
+                const batch = antSolutions.slice(startIdx, endIdx);
+                const bestInBatch = batch.reduce((a,b) => b.totalCost < a.totalCost ? b : a);
+                
+                const retention = 1.0 - config.evaporation;
+                networkData.edgeList.forEach(e => pheromones[e] *= retention);
+                bestInBatch.routesEdges.forEach(edges => {
+                     edges.forEach(edge => {
+                        const [a, b] = edge.split('-').map(Number);
+                        const key = `${Math.min(a,b)}-${Math.max(a,b)}`;
+                        if (pheromones[key]) {
+                            pheromones[key] = Math.min(95, pheromones[key] + (10.0 * (100000 / bestInBatch.totalCost))); 
+                        }
+                    });
+                });
+                renderPheromones();
+
+                const dots = document.querySelectorAll('.iteration-dot');
+                if(dots[currentIteration]) dots[currentIteration].classList.add('complete');
+
+                currentIteration++;
+                currentAnt = 0;
+                
+                const iterSelect = document.getElementById('iterSelect');
+                iterSelect.innerHTML = '';
+                for(let i=0; i < currentIteration; i++) iterSelect.innerHTML += `<option value="${i}">รอบที่ ${i+1}</option>`;
+                iterSelect.value = currentIteration - 1;
+            }
+
+            const totalSteps = config.iterations * config.antCount;
+            const currentStep = (currentIteration * config.antCount) + currentAnt;
+            const pct = (currentStep / totalSteps) * 100;
+            document.getElementById('progressBar').style.width = `${pct}%`;
+            
+            if (currentIteration >= config.iterations) {
+                isRunning = false;
+                document.getElementById('statusDisplay').innerText = "การจำลองเสร็จสิ้น";
+                document.body.classList.remove('running');
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('instantBtn').disabled = false;
+                document.getElementById('pauseBtn').disabled = true;
+                document.getElementById('showBestBtn').disabled = false;
+                document.getElementById('regenBtn').disabled = false;
+                showBestSolution();
+                return;
+            }
+
+            animationTimer = setTimeout(animateAnts, config.speed);
+        }
+
+        // ===================== ACO ALGORITHM =====================
+        function findAllPaths(startNode, endNode, routes, nodeDwellMap) {
+            let paths = [];
+            const getDwell = (id) => (nodeDwellMap && nodeDwellMap[id] !== undefined) ? nodeDwellMap[id] : config.dwellTime;
+
+            // 1. Direct (Bi-directional Check)
+            routes.forEach((route, rIdx) => {
+                const sIdx = route.indexOf(startNode);
+                const eIdx = route.indexOf(endNode);
+                
+                if (sIdx !== -1 && eIdx !== -1 && sIdx !== eIdx) {
+                    let dist = 0;
+                    let dwellSum = 0;
+                    let step = sIdx < eIdx ? 1 : -1;
+                    
+                    for (let i = sIdx; i != eIdx; i += step) {
+                        let u = route[i], v = route[i+step];
+                        dist += (networkData.edges[`${Math.min(u,v)}-${Math.max(u,v)}`] || 10);
+                        dwellSum += getDwell(v);
+                    }
+                    
+                    const avgSpeedKmMin = config.avgSpeedKmH / 60;
+                    const travelTime = dist / avgSpeedKmMin;
+                    const time = travelTime + dwellSum;
+                    
+                    const direction = sIdx < eIdx ? 'F' : 'B';
+                    const fareCost = config.fare;
+
+                    paths.push({ 
+                        type: 'direct', 
+                        segments: [{ route: rIdx, from: startNode, to: endNode, direction }], 
+                        time: time, 
+                        cost: time * config.vot + fareCost,
+                        fare: fareCost,
+                        transferPenalty: 0 
+                    });
+                }
+            });
+            
+            // 2. Transfer (1 hop) - Bi-directional Logic
+            routes.forEach((r1, idx1) => {
+                if (!r1.includes(startNode)) return;
+                routes.forEach((r2, idx2) => {
+                    if (idx1 === idx2 || !r2.includes(endNode)) return;
+                    
+                    const common = r1.filter(n => r2.includes(n));
+                    common.forEach(tn => {
+                        if (tn === startNode || tn === endNode) return;
+                        
+                        let d1 = 0, dw1 = 0;
+                        let s1 = r1.indexOf(startNode), e1 = r1.indexOf(tn);
+                        let step1 = s1 < e1 ? 1 : -1;
+                        for(let i=s1; i!=e1; i+=step1) {
+                             d1 += (networkData.edges[`${Math.min(r1[i],r1[i+step1])}-${Math.max(r1[i],r1[i+step1])}`]||10);
+                             dw1 += getDwell(r1[i+step1]);
+                        }
+                        const dir1 = s1 < e1 ? 'F' : 'B';
+
+                        let d2 = 0, dw2 = 0;
+                        let s2 = r2.indexOf(tn), e2 = r2.indexOf(endNode);
+                        let step2 = s2 < e2 ? 1 : -1;
+                        for(let i=s2; i!=e2; i+=step2) {
+                            d2 += (networkData.edges[`${Math.min(r2[i],r2[i+step2])}-${Math.max(r2[i],r2[i+step2])}`]||10);
+                            dw2 += getDwell(r2[i+step2]);
+                        }
+                        const dir2 = s2 < e2 ? 'F' : 'B';
+                        
+                        const transferWait = config.headway / 2;
+                        const avgSpeedKmMin = config.avgSpeedKmH / 60;
+                        
+                        const time1 = (d1 / avgSpeedKmMin) + dw1;
+                        const time2 = (d2 / avgSpeedKmMin) + dw2;
+                        const time = time1 + transferWait + time2;
+                        
+                        const fareCost = config.fare * 2;
+                        const transferPenalty = Math.pow(transferWait, config.transferPenaltyExponent) * config.votWait;
+
+                        paths.push({
+                            type: 'transfer',
+                            segments: [
+                                { route: idx1, from: startNode, to: tn, direction: dir1 }, 
+                                { route: idx2, from: tn, to: endNode, direction: dir2 }
+                            ],
+                            time: time, 
+                            cost: (time * config.vot) + fareCost + transferPenalty, 
+                            fare: fareCost,
+                            transferPenalty: transferPenalty
+                        });
+                    });
+                });
+            });
+            return paths;
+        }
+
+        function calculateUserCost(routes) {
+            // Helper function to perform allocation with specific dwell times
+            function performAllocation(nodeDwellTimes) {
+                let totalPrivateCost = 0; // Cost that users feel (includes Fare)
+                let totalSocialUserCost = 0; // Real resource cost (Time only) - for Objective Function
+                let totalFareRevenue = 0; // Track revenue separately
+
+                const odAllocations = [];
+                const routeLoads = new Array(routes.length).fill(0);
+                
+                // Track boarding/alighting counts per node (for next pass)
+                const nodeBoardings = {};
+                const nodeAlightings = {};
+                Object.keys(networkData.nodes).forEach(id => {
+                    nodeBoardings[id] = 0;
+                    nodeAlightings[id] = 0;
+                });
+                
+                let travelTimeCost = 0;
+                let waitTimeCost = 0;
+                let fareCost = 0; 
+                let unservedPenalty = 0;
+
+                networkData.odDemand.forEach(od => {
+                    // Pass specific dwell times to path finder
+                    const paths = findAllPaths(od.from, od.to, routes, nodeDwellTimes);
+                    let allocatedPaths = [], unserved = 0;
+                    
+                    if (paths.length === 0) {
+                        unserved = od.demand;
+                        const penalty = (unserved * config.penalty);
+                        
+                        // Penalty counts towards both Private and Social costs
+                        totalPrivateCost += penalty;
+                        totalSocialUserCost += penalty;
+                        unservedPenalty += penalty;
+                    } else {
+                        const directPaths = paths.filter(p => p.type === 'direct');
+                        const numDirect = directPaths.length;
+                        const adjustedDirectWait = numDirect > 0 ? (config.headway / numDirect) / 2 : (config.headway / 2);
+                        const adjustedDirectWaitCost = adjustedDirectWait * config.votWait;
+                        const initialWaitCostPerPax = (config.headway / 2) * config.votWait;
+
+                        paths.forEach(p => {
+                            p.rawTimeCost = p.time * config.vot; 
+                            if (p.type === 'direct') {
+                                p.rawWaitCost = adjustedDirectWaitCost;
+                            } else {
+                                p.rawWaitCost = initialWaitCostPerPax;
+                            }
+                            // Users decide based on Private Cost (Time + Wait + FARE + TransferPenalty)
+                            p.privateCost = p.rawTimeCost + p.rawWaitCost + p.fare + (p.transferPenalty || 0);
+                            
+                            // But society only cares about Real Time (Time + Wait + TransferPenalty) -> NO FARE
+                            p.socialCost = p.rawTimeCost + p.rawWaitCost + (p.transferPenalty || 0);
+                        });
+                        
+                        // Allocation Logic (Based on PRIVATE COST - User Behavior)
+                        if (config.allocationMethod === 'aon') {
+                            paths.sort((a,b) => a.privateCost - b.privateCost); // Sort by Private Cost
+                            const minCost = paths[0].privateCost;
+                            const bestPaths = paths.filter(p => Math.abs(p.privateCost - minCost) < 0.001);
+                            const sharePerPath = 1.0 / bestPaths.length;
+                            
+                            bestPaths.forEach(p => {
+                                p.share = sharePerPath;
+                                p.pax = od.demand * sharePerPath;
+                                allocatedPaths.push(p);
+                                
+                                // Accumulate Costs
+                                totalPrivateCost += p.privateCost * p.pax;
+                                totalSocialUserCost += p.socialCost * p.pax; // Exclude Fare from this sum
+                                totalFareRevenue += p.fare * p.pax;
+                                
+                                travelTimeCost += p.rawTimeCost * p.pax;
+                                waitTimeCost += (p.rawWaitCost + (p.transferPenalty || 0)) * p.pax;
+                                fareCost += p.fare * p.pax;
+                                
+                                p.segments.forEach(seg => {
+                                    routeLoads[seg.route] += p.pax;
+                                    if(nodeBoardings[seg.from] !== undefined) nodeBoardings[seg.from] += p.pax;
+                                    if(nodeAlightings[seg.to] !== undefined) nodeAlightings[seg.to] += p.pax;
+                                });
+                            });
+                        } else {
+                            // Logit Model (Based on PRIVATE COST)
+                            let weights = [], sumW = 0;
+                            paths.forEach(p => {
+                                // User chooses based on how expensive it is for THEM (Private Cost)
+                                let w = Math.exp(-config.theta * (p.privateCost / 10));
+                                weights.push(w); sumW += w;
+                            });
+                            
+                            let keptPaths = [];
+                            let keptShareSum = 0;
+                            paths.forEach((p, i) => {
+                                const rawShare = weights[i] / sumW;
+                                if (rawShare > 0.01) { 
+                                    p.share = rawShare;
+                                    keptPaths.push(p);
+                                    keptShareSum += rawShare;
+                                }
+                            });
+
+                            if (keptPaths.length > 0) {
+                                keptPaths.forEach(p => {
+                                    p.share = p.share / keptShareSum;
+                                    p.pax = od.demand * p.share;
+                                    allocatedPaths.push(p);
+                                    
+                                    // Accumulate Costs
+                                    totalPrivateCost += p.privateCost * p.pax;
+                                    totalSocialUserCost += p.socialCost * p.pax; // Exclude Fare
+                                    totalFareRevenue += p.fare * p.pax;
+                                    
+                                    travelTimeCost += p.rawTimeCost * p.pax;
+                                    waitTimeCost += (p.rawWaitCost + (p.transferPenalty || 0)) * p.pax;
+                                    fareCost += p.fare * p.pax;
+                                    
+                                    p.segments.forEach(seg => {
+                                        routeLoads[seg.route] += p.pax;
+                                        if(nodeBoardings[seg.from] !== undefined) nodeBoardings[seg.from] += p.pax;
+                                        if(nodeAlightings[seg.to] !== undefined) nodeAlightings[seg.to] += p.pax;
+                                    });
+                                });
+                            } else {
+                                // Fallback
+                                paths.sort((a,b) => a.privateCost - b.privateCost);
+                                const best = paths[0];
+                                best.share = 1.0;
+                                best.pax = od.demand;
+                                allocatedPaths.push(best);
+                                
+                                totalPrivateCost += best.privateCost * od.demand;
+                                totalSocialUserCost += best.socialCost * od.demand;
+                                totalFareRevenue += best.fare * od.demand;
+                                
+                                travelTimeCost += best.rawTimeCost * od.demand;
+                                waitTimeCost += (best.rawWaitCost + (best.transferPenalty || 0)) * od.demand;
+                                fareCost += best.fare * od.demand;
+                                
+                                best.segments.forEach(seg => {
+                                    routeLoads[seg.route] += od.demand;
+                                    if(nodeBoardings[seg.from] !== undefined) nodeBoardings[seg.from] += od.demand;
+                                    if(nodeAlightings[seg.to] !== undefined) nodeAlightings[seg.to] += od.demand;
+                                });
+                            }
+                        }
+                    }
+                    odAllocations.push({ od, allocatedPaths, unserved });
+                });
+                
+                return { 
+                    totalPrivateCost, 
+                    totalSocialUserCost, 
+                    totalFareRevenue,
+                    odAllocations, 
+                    routeLoads, 
+                    nodeBoardings, 
+                    nodeAlightings, 
+                    breakdown: { travelTimeCost, waitTimeCost, fareCost, unservedPenalty } 
+                };
+            }
+
+            // === PASS 1: Base Allocation ===
+            const baseDwellMap = {};
+            Object.keys(networkData.nodes).forEach(id => baseDwellMap[id] = config.dwellTime);
+            
+            const pass1 = performAllocation(baseDwellMap);
+            
+            // === CALCULATE DYNAMIC DWELL TIMES ===
+            const dynamicDwellMap = {};
+            const tripsPerHour = 60 / config.headway;
+            const T_BOARD = 4 / 60; 
+            const T_ALIGHT = 2 / 60;
+            
+            Object.keys(networkData.nodes).forEach(id => {
+                const nodeId = parseInt(id);
+                const boardPax = pass1.nodeBoardings[id] || 0;
+                const alightPax = pass1.nodeAlightings[id] || 0;
+                
+                let routesStopping = 0;
+                routes.forEach(r => { if(r.includes(nodeId)) routesStopping++; });
+                
+                if (routesStopping > 0) {
+                    const totalArrivals = routesStopping * tripsPerHour * 2; 
+                    const totalVariableTime = (boardPax * T_BOARD) + (alightPax * T_ALIGHT); 
+                    const avgDelayPerBus = totalVariableTime / totalArrivals;
+                    dynamicDwellMap[id] = config.dwellTime + avgDelayPerBus;
+                } else {
+                    dynamicDwellMap[id] = config.dwellTime;
+                }
+            });
+
+            // === PASS 2: Final Allocation with Real Dwell Times ===
+            const pass2 = performAllocation(dynamicDwellMap);
+            
+            const supplyPerHour = (60 / config.headway) * config.capacity;
+            let capacityPenalty = 0;
+            const loadFactors = [];
+            
+            pass2.routeLoads.forEach(load => {
+                const totalSupply = 2 * supplyPerHour; 
+                loadFactors.push(load / totalSupply);
+                if (load > totalSupply) {
+                    const excess = load - totalSupply;
+                    const pen = (excess * config.penalty); 
+                    capacityPenalty += pen;
+                    pass2.breakdown.unservedPenalty += pen;
+                }
+            });
+            
+            // Penalty applies to both private and social views
+            pass2.totalPrivateCost += capacityPenalty;
+            pass2.totalSocialUserCost += capacityPenalty;
+
+            return { 
+                userCost: Math.round(pass2.totalPrivateCost), // For displaying what users pay/feel
+                socialUserCost: Math.round(pass2.totalSocialUserCost), // For Objective Function (No Fare)
+                totalFareRevenue: Math.round(pass2.totalFareRevenue),
+                odAllocations: pass2.odAllocations, 
+                loadFactors,
+                breakdown: { 
+                    travelTimeCost: Math.round(pass2.breakdown.travelTimeCost), 
+                    waitTimeCost: Math.round(pass2.breakdown.waitTimeCost), 
+                    fareCost: Math.round(pass2.breakdown.fareCost), 
+                    unservedPenalty: Math.round(pass2.breakdown.unservedPenalty)
+                } 
+            };
+        }
+
+        // ... (generateAllAntSolutions, generateAntSolution, generateRoute - Same logic) ...
+
+        function generateAntSolution() {
+            const nodeIds = Object.keys(networkData.nodes).map(Number);
+            const adj = {};
+            nodeIds.forEach(id => adj[id] = []);
+            networkData.edgeList.forEach(edge => {
+                const [a, b] = edge.split('-').map(Number);
+                const dist = networkData.edges[edge]; 
+                if (adj[a]) adj[a].push({ node: b, weight: dist }); 
+                if (adj[b]) adj[b].push({ node: a, weight: dist });
+            });
+            const routes = [], routesEdges = [], routesLengthsMin = [];
+            let avoidSet = new Set();
+            for (let r = 0; r < config.routeCount; r++) {
+                const route = generateBiDirectionalRoute(adj, nodeIds, avoidSet);
+                routes.push(route);
+                const edges = [];
+                let lengthKm = 0;
+                for (let i = 0; i < route.length - 1; i++) {
+                    const edgeKey = `${route[i]}-${route[i+1]}`; 
+                    edges.push(edgeKey);
+                    lengthKm += (networkData.edges[`${Math.min(route[i], route[i+1])}-${Math.max(route[i], route[i+1])}`] || 0);
+                }
+                routesEdges.push(edges);
+                routesLengthsMin.push(lengthKm);
+                route.forEach(n => avoidSet.add(n));
+                if (avoidSet.size > nodeIds.length * 0.8) avoidSet = new Set();
+            }
+            
+            const { userCost, socialUserCost, totalFareRevenue, odAllocations, loadFactors, breakdown } = calculateUserCost(routes);
+            
+            let totalFleetSize = 0;
+            const fleetSizes = [];
+            
+            const tripsPerHour = 60 / config.headway;
+            const avgSpeedKmMin = config.avgSpeedKmH / 60;
+            
+            routesLengthsMin.forEach(lenKm => {
+                const numStops = routes[routesLengthsMin.indexOf(lenKm)].length;
+                const driveTime = (lenKm * 2) / avgSpeedKmMin;
+                const totalDwell = (numStops * 2) * config.dwellTime; 
+                
+                const roundTripTime = driveTime + totalDwell;
+                const fleetForRoute = Math.ceil(roundTripTime / config.headway);
+                fleetSizes.push(fleetForRoute);
+                totalFleetSize += fleetForRoute;
+            });
+            
+            const totalHourlyKm = routesLengthsMin.reduce((a, b) => a + b, 0) * 2 * tripsPerHour;
+            
+            const rentalCost = totalFleetSize * config.routeCost; 
+            const operatingCost = totalHourlyKm * config.opCost;
+            
+            const opCost = Math.round(rentalCost + operatingCost);
+            
+            // USE SOCIAL COST FOR OPTIMIZATION
+            const totalCost = socialUserCost + opCost;
+
+            return { 
+                routes, routesEdges, 
+                userCost, // Keep for display
+                socialUserCost,
+                totalFareRevenue,
+                opCost, 
+                totalCost, // Used for fitness
+                odAllocations, fleetSize: totalFleetSize, fleetSizes, loadFactors,
+                costBreakdown: { ...breakdown, rentalCost: Math.round(rentalCost), operatingCost: Math.round(operatingCost), totalHourlyKm },
+                routeLengths: routesLengthsMin 
+            };
+        }
+
+        function generateBiDirectionalRoute(adj, nodeIds, avoid = new Set()) {
+            let candidates = nodeIds.filter(id => !avoid.has(id));
+            if (candidates.length === 0) candidates = [...nodeIds];
+            
+            let pivot = candidates[Math.floor(myRandom() * candidates.length)];
+            
+            const visited = new Set([pivot]);
+            let currentTotalLen = 0;
+            
+            const chooseNext = (currNode) => {
+                const neighbors = (adj[currNode] || []).filter(n => {
+                    if (visited.has(n.node)) return false;
+                    if (currentTotalLen + n.weight > config.maxRouteLengthKm) return false;
+                    return true;
+                });
+                
+                if (neighbors.length === 0) return null;
+                
+                const weights = neighbors.map(n => {
+                    const key = `${Math.min(currNode, n.node)}-${Math.max(currNode, n.node)}`;
+                    const tau = pheromones[key] || 10;
+                    const degree = adjList[currNode] ? adjList[currNode].length : 1;
+                    const eta = degree / n.weight; 
+                    return Math.pow(tau, config.alpha) * Math.pow(eta, config.beta);
+                });
+                
+                const totalWeight = weights.reduce((a, b) => a + b, 0);
+                let r = myRandom() * totalWeight;
+                let idx = 0;
+                for (let i = 0; i < weights.length; i++) { 
+                    r -= weights[i]; 
+                    if (r <= 0) { idx = i; break; } 
+                }
+                return neighbors[idx];
+            };
+
+            let pathA = [pivot]; 
+            let currA = pivot;
+            
+            let pathB = [pivot]; 
+            let currB = pivot;
+            
+            const isDeadEnd = (adj[pivot] || []).length === 1;
+
+            let activeA = true;
+            let activeB = !isDeadEnd; 
+            
+            while(activeA || activeB) {
+                if(activeA) {
+                    const nextA = chooseNext(currA);
+                    if(nextA) {
+                        visited.add(nextA.node);
+                        pathA.push(nextA.node);
+                        currentTotalLen += nextA.weight;
+                        currA = nextA.node;
+                    } else {
+                        activeA = false;
+                    }
+                }
+                
+                if(activeB) {
+                    const nextB = chooseNext(currB);
+                    if(nextB) {
+                        visited.add(nextB.node);
+                        pathB.push(nextB.node);
+                        currentTotalLen += nextB.weight;
+                        currB = nextB.node;
+                    } else {
+                        activeB = false;
+                    }
+                }
+            }
+            
+            const prefix = pathB.slice(1).reverse();
+            return [...prefix, ...pathA];
+        }
+
+        function recalculateAllSolutions() {
+            antSolutions.forEach(sol => {
+                const { userCost, socialUserCost, totalFareRevenue, odAllocations, loadFactors, breakdown } = calculateUserCost(sol.routes);
+                sol.userCost = userCost; // Private Cost (Time + Fare)
+                sol.socialUserCost = socialUserCost; // Social Cost (Time only)
+                sol.totalFareRevenue = totalFareRevenue;
+                
+                sol.odAllocations = odAllocations;
+                sol.loadFactors = loadFactors;
+                
+                let totalLenKm = 0;
+                let totalFleetSize = 0;
+                const fleetSizes = [];
+                const routeLengths = []; 
+                
+                sol.routes.forEach(route => {
+                    let rLen = 0;
+                    for(let i=0; i<route.length-1; i++) 
+                        rLen += (networkData.edges[`${Math.min(route[i],route[i+1])}-${Math.max(route[i],route[i+1])}`] || 0);
+                    totalLenKm += rLen;
+                    routeLengths.push(rLen); 
+                    
+                    const avgSpeedKmMin = config.avgSpeedKmH / 60;
+                    const numStops = route.length;
+                    const driveTime = (rLen * 2) / avgSpeedKmMin;
+                    const totalDwell = (numStops * 2) * config.dwellTime;
+                    const roundTripTime = driveTime + totalDwell;
+                    const fleet = Math.ceil(roundTripTime / config.headway);
+                    
+                    fleetSizes.push(fleet);
+                    totalFleetSize += fleet;
+                });
+                
+                sol.fleetSizes = fleetSizes;
+                sol.routeLengths = routeLengths; 
+                
+                const tripsPerHour = 60 / config.headway;
+                const totalHourlyKm = totalLenKm * 2 * tripsPerHour;
+                
+                const rentalCost = totalFleetSize * config.routeCost;
+                const operatingCost = totalHourlyKm * config.opCost;
+                
+                sol.opCost = Math.round(rentalCost + operatingCost);
+                sol.fleetSize = totalFleetSize;
+                
+                sol.totalCost = sol.socialUserCost + sol.opCost; 
+                sol.netLoss = sol.opCost - sol.totalFareRevenue;
+
+                sol.costBreakdown = { ...breakdown, rentalCost: Math.round(rentalCost), operatingCost: Math.round(operatingCost), totalHourlyKm };
+            });
+            let best = Infinity;
+            antSolutions.forEach((s, i) => { if (s.totalCost < best) { best = s.totalCost; bestAntIndex = i; } });
+            if (window.currentDisplayedSolutionIndex !== undefined) selectAnt(window.currentDisplayedSolutionIndex);
+            createComparisonGrid();
+        }
+
+        async function runSensitivityAnalysis() {
+            const btn = document.getElementById('sensitivityBtn');
+            const pauseBtn = document.getElementById('pauseBtn');
+            const status = document.getElementById('statusDisplay');
+            const sensSection = document.getElementById('sensitivitySection');
+            const sensResults = document.getElementById('sensResults');
+            
+            btn.disabled = true;
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('instantBtn').disabled = true;
+            
+            // Enable pause button for sensitivity
+            pauseBtn.disabled = false;
+            isSensitivityRunning = true;
+            isPaused = false;
+            pauseBtn.innerHTML = "⏸️ หยุดชั่วคราว";
+
+            sensSection.style.display = 'block'; 
+            sensResults.innerHTML = '<div style="text-align:center;">กำลังวิเคราะห์...</div>';
+            
+            const originalRouteCount = config.routeCount; 
+            const slider = document.getElementById('routeSlider');
+            const maxRoutes = slider ? parseInt(slider.max) : 10; 
+            
+            const results = [];
+            let bestGlobalSolution = null;
+            let minGlobalCost = Infinity;
+            let bestRouteCount = 0;
+
+            const patience = config.earlyStoppingPatience;
+            let stagnationCounter = 0;
+            
+            for (let r = 1; r <= maxRoutes; r++) { 
+                // Check stop flag (from reset)
+                if (!isSensitivityRunning) break;
+
+                // Yield to UI Thread before waiting loop
+                await new Promise(resolve => setTimeout(resolve, 0));
+
+                // PAUSE CHECK LOGIC
+                while (isPaused) {
+                    status.textContent = `วิเคราะห์ความอ่อนไหว: หยุดชั่วคราว (กด 'ต่อ' เพื่อทำงานต่อ)`;
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    if (!isSensitivityRunning) break; // Break if reset while paused
+                }
+                if (!isSensitivityRunning) break;
+
+                status.textContent = `กำลังวิเคราะห์กรณี ${r} สาย...`;
+                config.routeCount = r;
+                
+                // Allow UI update
+                await new Promise(resolve => setTimeout(resolve, 20)); 
+                
+                networkData.edgeList.forEach(e => pheromones[e] = 10);
+                
+                let bestLocalCost = Infinity;
+                let bestLocalSol = null;
+                
+                for(let iter = 0; iter < config.iterations; iter++) { 
+                    // Check stop/pause inside inner loop too for responsiveness
+                    if (!isSensitivityRunning) break;
+                    
+                    // Yield to UI Thread
+                    await new Promise(resolve => setTimeout(resolve, 0));
+
+                    while (isPaused) {
+                        status.textContent = `วิเคราะห์ความอ่อนไหว: หยุดชั่วคราว (กด 'ต่อ' เพื่อทำงานต่อ)`;
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                        if (!isSensitivityRunning) break;
+                    }
+                    if (!isSensitivityRunning) break;
+
+                    const iterSols = [];
+                    for(let a = 0; a < config.antCount; a++) { 
+                        const sol = generateAntSolution();
+                        iterSols.push(sol);
+                        if(sol.totalCost < bestLocalCost) {
+                            bestLocalCost = sol.totalCost;
+                            bestLocalSol = sol;
+                        }
+                    }
+                    
+                    const retention = 1.0 - (config.evaporation || 0.3);
+                    networkData.edgeList.forEach(e => pheromones[e] *= retention);
+                    
+                    const bestInIter = iterSols.reduce((a, b) => b.totalCost < a.totalCost ? b : a);
+                    bestInIter.routesEdges.forEach(edges => {
+                         edges.forEach(edge => {
+                            const [u, v] = edge.split('-').map(Number);
+                            const key = `${Math.min(u,v)}-${Math.max(u,v)}`;
+                            if (pheromones[key]) {
+                                pheromones[key] = Math.min(95, pheromones[key] + (100000/bestInIter.totalCost));
+                            }
+                        });
+                    });
+                }
+                
+                if (bestLocalSol && bestLocalCost < minGlobalCost) {
+                    minGlobalCost = bestLocalCost;
+                    bestGlobalSolution = bestLocalSol;
+                    bestRouteCount = r;
+                    stagnationCounter = 0;
+                } else {
+                    stagnationCounter++;
+                }
+                
+                if (bestLocalSol) {
+                    results.push({
+                        routes: r,
+                        userCost: bestLocalSol.userCost,
+                        opCost: bestLocalSol.opCost,
+                        totalCost: bestLocalSol.totalCost,
+                        fleetSize: bestLocalSol.fleetSize 
+                    });
+                }
+
+                if (stagnationCounter >= patience) {
+                    status.textContent = `หยุดการวิเคราะห์ก่อนกำหนด: ค่าไม่ดีขึ้นติดต่อกัน ${patience} รอบ`;
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    break;
+                }
+            }
+            
+            // Restore UI state
+            isSensitivityRunning = false;
+            btn.disabled = false;
+            pauseBtn.disabled = true; // Disable pause button again
+            pauseBtn.innerHTML = "⏸️ หยุดชั่วคราว"; 
+            document.getElementById('startBtn').disabled = false;
+            document.getElementById('instantBtn').disabled = false;
+
+            if (results.length > 0) { // Only update if we have results (didn't reset immediately)
+                config.routeCount = bestRouteCount;
+                if(slider) {
+                    slider.value = bestRouteCount;
+                    document.getElementById('routeCountDisplay').textContent = bestRouteCount;
+                }
+                
+                antSolutions = [bestGlobalSolution];
+                bestAntIndex = 0;
+                
+                updateDynamicUI(); 
+                selectAnt(0); 
+                
+                // Final status message depends on how it ended
+                if (stagnationCounter >= patience) {
+                     status.textContent = `วิเคราะห์เสร็จสิ้น (Early Stopping): แนะนำ ${bestRouteCount} สาย`;
+                } else {
+                     status.textContent = `วิเคราะห์เสร็จสิ้น: ดีที่สุดคือ ${bestRouteCount} สาย`;
+                }
+                
+                drawSensitivityChart(results);
+                sensSection.scrollIntoView({ behavior: 'smooth' });
+            }
+        }
+        
+        function drawSensitivityChart(data) {
+            const svg = document.getElementById('sensChart');
+            svg.innerHTML = '';
+            const w = svg.clientWidth;
+            const h = svg.clientHeight;
+            const p = 40; 
+            
+            const maxCost = Math.max(...data.map(d => d.totalCost)) * 1.1;
+            const minCost = Math.min(...data.map(d => Math.min(d.userCost, d.opCost))) * 0.9;
+            
+            const xScale = (val) => p + ((val - 1) / (data.length - 1)) * (w - 2*p);
+            const yScale = (val) => h - p - ((val - minCost) / (maxCost - minCost)) * (h - 2*p);
+            
+            let axisHtml = `<line x1="${p}" y1="${h-p}" x2="${w-p}" y2="${h-p}" class="chart-axis"/>`; 
+            axisHtml += `<line x1="${p}" y1="${p}" x2="${p}" y2="${h-p}" class="chart-axis"/>`; 
+            
+            for(let i=0; i<=5; i++) {
+                const yVal = minCost + (maxCost-minCost)*(i/5);
+                const yPos = yScale(yVal);
+                axisHtml += `<line x1="${p}" y1="${yPos}" x2="${w-p}" y2="${yPos}" class="chart-grid"/>`;
+                axisHtml += `<text x="${p-5}" y="${yPos+3}" class="chart-label" style="text-anchor:end;">${(yVal/1000).toFixed(0)}k</text>`;
+            }
+            for(let d of data) {
+                const xPos = xScale(d.routes);
+                axisHtml += `<line x1="${xPos}" y1="${h-p}" x2="${xPos}" y2="${p}" class="chart-grid"/>`;
+                axisHtml += `<text x="${xPos}" y="${h-p+15}" class="chart-label">${d.routes}</text>`;
+            }
+            svg.innerHTML = axisHtml;
+            
+            const drawLine = (key, color) => {
+                let pathD = `M ${xScale(data[0].routes)} ${yScale(data[0][key])}`;
+                data.forEach(d => pathD += ` L ${xScale(d.routes)} ${yScale(d[key])}`);
+                const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                path.setAttribute('d', pathD);
+                path.setAttribute('class', 'chart-line');
+                path.setAttribute('stroke', color);
+                svg.appendChild(path);
+                
+                data.forEach(d => {
+                    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    c.setAttribute('cx', xScale(d.routes));
+                    c.setAttribute('cy', yScale(d[key]));
+                    c.setAttribute('r', 4);
+                    c.setAttribute('class', 'chart-point');
+                    c.setAttribute('fill', color);
+                    c.onmouseover = (e) => {
+                        const tip = document.getElementById('chartTooltip');
+                        tip.style.display = 'block';
+                        tip.style.left = (e.clientX - 200) + 'px'; 
+                        tip.style.top = (e.clientY - 600) + 'px'; 
+                        tip.innerHTML = `${key}<br>Routes: ${d.routes}<br>Fleet: ${d.fleetSize} คัน<br>Cost: ${d[key].toLocaleString()}`;
+                    };
+                    c.onmouseout = () => document.getElementById('chartTooltip').style.display = 'none';
+                    svg.appendChild(c);
+                });
+            };
+            
+            drawLine('totalCost', '#22c55e'); 
+            drawLine('userCost', '#eab308'); 
+            drawLine('opCost', '#a855f7'); 
+            
+            const legendHtml = `
+                <div style="display:flex; gap:1rem; justify-content:center; margin-top:-30px;">
+                    <div style="color:#22c55e; font-size:0.75rem;">● Total Cost</div>
+                    <div style="color:#eab308; font-size:0.75rem;">● User Cost</div>
+                    <div style="color:#a855f7; font-size:0.75rem;">● Operator Cost</div>
+                </div>
+            `;
+            document.getElementById('sensResults').innerHTML = legendHtml;
+            
+            const best = data.reduce((a,b) => b.totalCost < a.totalCost ? b : a);
+            document.getElementById('sensResults').innerHTML += `
+                <div class="info-box" style="margin-top:0.5rem; border-color:#22c55e;">
+                    <div class="info-label" style="font-size:0.9rem; color:#fff;">จุดที่เหมาะสมที่สุด (Optimal Point)</div>
+                    <div class="info-value total" style="font-size:1.2rem;">${best.routes} สาย (${best.fleetSize} คัน)</div>
+                    <div class="info-label">Total Cost ต่ำสุด: ${best.totalCost.toLocaleString()} THB</div>
+                </div>
+            `;
+        }
+
+        init();
+    </script>
+</body>
+</html>
